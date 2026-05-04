@@ -1,0 +1,1464 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+  <meta charset="UTF-8">
+  <title>Advanced Daily Task Tracker</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: { extend: { colors: { primary: '#4f46e5' } } }
+    }
+  </script>
+  <style>
+    /* COMPACT MODE STYLES (Shared) */
+    html[class*="compact-"] body { padding: 0 !important; }
+    html[class*="compact-"] .hide-in-compact { display: none !important; }
+    html[class*="compact-"] .show-in-compact { display: flex !important; }
+    html:not([class*="compact-"]) .show-in-compact { display: none !important; }
+    html[class*="compact-"] header { padding: 0.5rem !important; height: auto !important; }
+    html[class*="compact-"] .right-panel { display: none !important; }
+    html[class*="compact-"] .timer-box { padding: 0.5rem !important; }
+    html[class*="compact-"] .timer-display { font-size: 1.5rem !important; margin-bottom: 0.25rem !important; }
+    html[class*="compact-"] table { font-size: 0.75rem !important; }
+
+    /* VERTICAL COMPACT */
+    html.compact-v main { flex-direction: column !important; padding: 0.5rem !important; gap: 0.5rem !important; }
+    html.compact-v .left-panel { flex: none !important; gap: 0.5rem !important; }
+    html.compact-v th, html.compact-v td { padding: 0.25rem 0.5rem !important; }
+    html.compact-v #compactOverallProgress { font-size: 1.25rem; margin-left: 0.5rem; }
+    html.compact-v .smart-timer-container { display: none !important; }
+    html.compact-v .v-mode-timers { display: flex !important; }
+
+    /* HORIZONTAL COMPACT (BOTTOM BAR) */
+    html.compact-h body { overflow: hidden; display: flex; flex-direction: column; }
+    html.compact-h main { flex-direction: column !important; padding: 0 !important; justify-content: flex-end; align-items: center; flex: 1; min-height: 0; }
+    html.compact-h .left-panel { flex: none !important; align-items: center; justify-content: center; width: 100%; border: none; padding: 0.5rem; }
+    html.compact-h .smart-timer-container { display: none !important; }
+    html.compact-h .h-mode-timers { display: flex !important; }
+    
+    html.compact-h #queuesCard { position: fixed; bottom: 0; left: 0; right: 0; width: auto; margin: 0 0.5rem 0.5rem 0.5rem; border-radius: 12px; border: 1px solid rgba(51, 65, 85, 0.8); z-index: 50; background: rgba(15, 23, 42, 0.98); backdrop-filter: blur(10px); box-shadow: 0 -4px 25px rgba(0,0,0,0.3); }
+    html.compact-h #queuesCard thead { display: none; }
+    html.compact-h #queuesCard .border-b { padding: 0.25rem 0.75rem; border-color: rgba(51, 65, 85, 0.5); }
+    html.compact-h #btnOpenLogModal { padding: 0.2rem 0.5rem; margin-top: 0; }
+    html.compact-h #queuesTableBody { display: flex; flex-direction: row; overflow-x: auto; flex-wrap: nowrap; padding: 0.5rem; align-items: center; justify-content: center; scrollbar-width: none; }
+    html.compact-h #queuesTableBody::-webkit-scrollbar { display: none; }
+    html.compact-h #queuesTableBody tr { display: flex; align-items: center; gap: 0.5rem; padding: 0 0.75rem; border-right: 1px solid rgba(51, 65, 85, 0.4); flex-shrink: 0; background: transparent !important; }
+    html.compact-h #queuesTableBody tr:last-child { border-right: none; }
+    html.compact-h #queuesTableBody td { padding: 0 !important; border: none !important; }
+    html.compact-h #queuesTableBody td:nth-child(2), html.compact-h #queuesTableBody td:nth-child(3), html.compact-h #queuesTableBody td:nth-child(5) { display: none !important; }
+    html.compact-h #queuesTableBody td:nth-child(1) { font-size: 0.8rem !important; font-weight: 600; color: #cbd5e1; max-width: 100px; whitespace: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+    html.compact-h #queuesTableBody td:nth-child(4) .flex { gap: 0.25rem; }
+    html.compact-h #queuesTableBody td:nth-child(4) input { width: 2.2rem !important; font-size: 0.85rem !important; height: 1.5rem; background: #0f172a; border-color: #475569; padding: 0; }
+    html.compact-h #queuesTableBody td:nth-child(4) button { width: 1.5rem !important; height: 1.5rem !important; font-size: 0.85rem; border-radius: 4px; padding: 0; display: flex; align-items: center; justify-content: center; }
+    html.compact-h #compactOverallProgress { font-size: 0.85rem; margin-left: 0.25rem; font-weight: 700; }
+
+    /* FLOAT / SQUARE COMPACT (WIDGET MODE) */
+    html.compact-f body { overflow: hidden; display: flex; flex-direction: column; }
+    html.compact-f main { padding: 0 !important; align-items: center; justify-content: center; height: calc(100vh - 65px); flex: 1; min-height: 0; }
+    html.compact-f .left-panel { flex: none !important; width: 100%; max-width: 400px; height: 100%; max-height: 100vh; border: none; padding: clamp(0.2rem, 2vw, 0.5rem); display: flex; flex-direction: column; }
+    html.compact-f #queuesCard { height: 100%; max-height: 100%; border-radius: clamp(8px, 4vw, 16px); border: 1px solid rgba(51,65,85,0.8); background: rgba(15,23,42,0.98); backdrop-filter: blur(10px); box-shadow: 0 10px 40px rgba(0,0,0,0.5); display: flex; flex-direction: column; }
+    html.compact-f #queuesCard thead { display: none; }
+    html.compact-f #queuesCard > div.border-b { display: flex; flex-direction: column; align-items: center; text-align: center; padding: clamp(0.5rem, 5vw, 1.5rem) clamp(0.5rem, 3vw, 1rem) clamp(0.2rem, 3vw, 1rem) clamp(0.5rem, 3vw, 1rem); }
+    html.compact-f .show-in-compact.flex-row { flex-direction: column !important; gap: clamp(0.25rem, 3vw, 0.75rem); width: 100%; }
+    html.compact-f .show-in-compact.flex-row > div.flex-col { align-items: center !important; flex: 1; width: 100%; }
+    html.compact-f #compactActiveTimerClock { font-size: clamp(2rem, 15vw, 3.5rem) !important; letter-spacing: -0.05em; font-weight: 800; line-height: 1; text-align: center; width: 100%; margin-bottom: 0.5rem; }
+    html.compact-f #compactActiveTimerTitle { font-size: clamp(0.7rem, 4vw, 1rem) !important; margin-bottom: 0.25rem; text-align: center; width: 100%; }
+    html.compact-f #queuesCard > div:nth-child(2) { overflow-y: auto !important; overflow-x: hidden !important; flex: 1; min-height: 0; }
+    html.compact-f #queuesTableBody { display: flex; flex-direction: column; padding: 0; }
+    html.compact-f #queuesTableBody tr { display: flex; flex-direction: row; align-items: center; justify-content: space-between; padding: clamp(0.25rem, 2vw, 0.75rem) clamp(0.25rem, 2vw, 1rem); border-bottom: 1px solid rgba(51, 65, 85, 0.4); gap: clamp(0.25rem, 2vw, 1rem); background: transparent !important; }
+    html.compact-f #queuesTableBody tr:last-child { border-bottom: none; }
+    html.compact-f #queuesTableBody td { padding: 0 !important; border: none !important; }
+    html.compact-f #queuesTableBody td:nth-child(2), html.compact-f #queuesTableBody td:nth-child(3), html.compact-f #queuesTableBody td:nth-child(5) { display: none !important; }
+    html.compact-f #queuesTableBody td:nth-child(1) { font-size: clamp(0.75rem, 4vw, 0.95rem) !important; font-weight: 600; color: #cbd5e1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+    html.compact-f #queuesTableBody td:nth-child(4) .flex { gap: clamp(0.1rem, 1vw, 0.5rem); }
+    html.compact-f #queuesTableBody td:nth-child(4) input { width: clamp(2rem, 8vw, 3rem) !important; font-size: clamp(0.75rem, 4vw, 1rem) !important; height: clamp(1.5rem, 6vw, 2rem); background: #0f172a; border-color: #475569; }
+    html.compact-f #queuesTableBody td:nth-child(4) button { width: clamp(1.5rem, 6vw, 2rem) !important; height: clamp(1.5rem, 6vw, 2rem) !important; font-size: clamp(0.75rem, 4vw, 1rem); border-radius: 4px; }
+    html.compact-f #compactOverallProgress { font-size: clamp(0.75rem, 4vw, 1rem); margin-left: 0.25rem; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans min-h-screen flex flex-col overflow-x-hidden">
+  
+  <div class="flex flex-col flex-1 w-full max-w-[1400px] mx-auto">
+    <!-- Header -->
+    <header class="h-16 border-b border-slate-800 bg-slate-900/50 backdrop-blur-md px-4 lg:px-6 flex items-center justify-between shrink-0">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 bg-indigo-600 rounded flex items-center justify-center shadow-lg shadow-indigo-500/20">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+        </div>
+        <h1 class="text-lg font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">Daily Task Tracker</h1>
+      </div>
+      <div class="flex flex-wrap gap-2 items-center">
+        <button id="btnCompactV" class="px-2 py-1.5 bg-slate-800 border border-slate-700 text-slate-300 hover:text-white rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1 hide-in-compact" title="Mini (Vertical Flow)">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+          <span class="hidden sm:inline">Mini V</span>
+        </button>
+        <button id="btnCompactH" class="px-2 py-1.5 bg-slate-800 border border-slate-700 text-slate-300 hover:text-white rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1 hide-in-compact" title="Mini (Horizontal Bottom Bar)">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16"></path></svg>
+          <span class="hidden md:inline">Mini H</span>
+        </button>
+        <button id="btnCompactF" class="px-2 py-1.5 bg-slate-800 border border-slate-700 text-slate-300 hover:text-white rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1 hide-in-compact" title="Mini (Float / Box)">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2" stroke-width="2"></rect><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10h6m-6 4h6"></path></svg>
+          <span class="hidden md:inline">Mini Float</span>
+        </button>
+        <button id="btnNormalMode" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold transition-colors shadow-lg shadow-indigo-600/20 show-in-compact" title="Exit Mini">
+          Return Normal
+        </button>
+        <button id="btnTheme" class="hidden" title="Toggle Theme"></button>
+        <button id="btnSettings" class="px-3 py-1.5 bg-slate-800 border border-slate-700 text-slate-300 hover:text-white rounded-lg text-sm font-semibold transition-colors hide-in-compact">Settings</button>
+        <button id="btnManage" class="px-4 py-1.5 bg-indigo-600 rounded-lg text-sm font-semibold hover:bg-indigo-500 transition-colors shadow-lg shadow-indigo-600/20 hide-in-compact">Manage Queues</button>
+        <button id="btnResetCounts" class="px-3 py-1.5 bg-rose-600/20 border border-rose-500/40 text-rose-400 hover:text-rose-300 hover:bg-rose-600/30 rounded-lg text-sm font-semibold transition-colors hide-in-compact">Reset Counts</button>
+        <button id="btnHistory" class="px-3 py-1.5 bg-slate-800 border border-slate-700 text-slate-300 hover:text-white rounded-lg text-sm font-semibold transition-colors hide-in-compact">History</button>
+        <button id="btnExport" class="px-3 py-1.5 bg-slate-800 border border-slate-700 text-slate-300 hover:text-white rounded-lg text-sm font-semibold transition-colors hidden sm:block hide-in-compact">Sync to Sheet</button>
+        <a id="btnOpenSheet" target="_blank" class="px-3 py-1.5 bg-emerald-600/20 border border-emerald-500/40 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-600/30 rounded-lg text-sm font-semibold transition-colors shadow-[0_0_10px_rgba(16,185,129,0.1)] hidden">Open Sheet <span class="text-[10px] ml-1">↗</span></a>
+      </div>
+    </header>
+
+    <main class="flex-1 flex flex-col lg:flex-row gap-6 p-4 lg:p-6">
+      <!-- Left Panel -->
+      <div class="flex-1 flex flex-col gap-6 left-panel">
+        <!-- Summary Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 hide-in-compact">
+          <div id="tvSummaryCard" class="bg-slate-900 border border-slate-800 p-4 rounded-xl shadow-xl relative overflow-hidden flex flex-col transition-colors duration-300">
+            <div class="absolute top-0 right-0 p-2 opacity-10">
+              <svg class="w-12 h-12" fill="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" fill="none" stroke="currentColor"></path></svg>
+            </div>
+            <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1" id="tvSummaryTitle">Vertical Training (Week)</div>
+            <span id="summaryTvProgress" class="text-3xl font-bold text-white mt-auto">0h 0m <span class="text-sm font-normal text-slate-400">/ 0h 0m</span></span>
+          </div>
+          <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl shadow-xl flex flex-col">
+            <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Overall Progress</div>
+            <span id="summaryProgress" class="text-3xl font-bold text-teal-400 mt-auto">0%</span>
+          </div>
+          <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl shadow-xl flex flex-col">
+            <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Pace Status</div>
+            <div class="mt-auto flex items-center">
+              <span id="summaryPace" class="text-xl font-bold text-slate-400">Waiting</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Queues Table (Main Card) -->
+        <div id="queuesCard" class="bg-slate-900 border-2 border-slate-800 rounded-xl overflow-hidden flex flex-col shadow-2xl transition-colors duration-300">
+          <div class="px-4 py-3 border-b border-slate-800 flex flex-col gap-3 md:flex-row md:justify-between md:items-center bg-slate-950/30 overflow-hidden relative">
+             
+              <!-- Spacer for H-Mode centering -->
+              <div class="hidden h-mode-timers flex-1"></div>
+
+              <!-- Smart Timer (Shows in compact-f) -->
+             <div class="show-in-compact smart-timer-container flex-col items-center gap-2 w-full md:w-auto shrink-0 md:flex-1 md:items-start" style="display: none /* overriden by css */">
+                <div class="flex flex-col items-center justify-center w-full md:items-start">
+                  <div id="compactActiveTimerTitle" class="text-[9px] font-bold text-slate-500 uppercase tracking-widest leading-none mb-1">No Timer Active</div>
+                  <div id="compactActiveTimerClock" class="text-2xl font-mono text-slate-100 font-bold tracking-tight leading-none">00:00:00</div>
+                </div>
+                <div class="relative w-full max-w-[200px] mt-1 hide-in-compact" id="smartTimerDropdownContainer">
+                   <select id="compactTimerSelect" class="w-full appearance-none bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded text-[10px] font-bold text-white shadow px-3 py-1.5 outline-none cursor-pointer pr-8 text-center transition-colors" onchange="app.handleTimerDropdown(this.value)">
+                      <option value="" disabled selected>TIMERS ▾</option>
+                      <option value="work">▶ Case Work</option>
+                      <option value="tv">▶ Vert. Train</option>
+                      <option value="break">▶ Break</option>
+                      <option value="stop">⏹ Stop All</option>
+                   </select>
+                   <div class="pointer-events-none absolute inset-y-0 right-2 flex items-center text-slate-400">
+                      <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                   </div>
+                </div>
+             </div>
+
+             <!-- V-Mode Timers (Shows ONLY in compact-v stacked vertically) -->
+             <div class="hidden v-mode-timers flex-col gap-3 w-full border-b border-slate-700/50 pb-4 mb-2">
+                <!-- Mini Case Work -->
+                <div class="flex items-center justify-between">
+                   <div class="flex items-center gap-3">
+                     <button id="btnVWorkToggle" class="w-8 h-8 rounded-lg flex justify-center items-center font-bold bg-indigo-600/20 text-indigo-400 hover:bg-indigo-600/40 border border-indigo-500/30 transition-colors">▶</button>
+                     <span class="text-xs font-bold uppercase text-slate-400">Case Work</span>
+                   </div>
+                   <span id="compactVWorkDisplay" class="font-mono text-lg font-bold text-slate-100">00:00:00</span>
+                </div>
+                <!-- Mini VT -->
+                <div class="flex items-center justify-between">
+                   <div class="flex items-center gap-3">
+                     <button id="btnVTvToggle" class="w-8 h-8 rounded-lg flex justify-center items-center font-bold bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/40 border border-emerald-500/30 transition-colors">▶</button>
+                     <span class="text-xs font-bold uppercase text-slate-400">Vert. Train</span>
+                   </div>
+                   <span id="compactVTvDisplay" class="font-mono text-lg font-bold text-slate-100">00:00:00</span>
+                </div>
+                <!-- Mini Break -->
+                <div class="flex items-center justify-between">
+                   <div class="flex items-center gap-3">
+                     <button id="btnVBreakToggle" class="w-8 h-8 rounded-lg flex justify-center items-center font-bold bg-rose-600/20 text-rose-400 hover:bg-rose-600/40 border border-rose-500/30 transition-colors">▶</button>
+                     <span class="text-xs font-bold uppercase text-slate-400">Break</span>
+                   </div>
+                   <span id="compactVBreakDisplay" class="font-mono text-lg font-bold text-slate-100">00:00:00</span>
+                </div>
+                <!-- Pace -->
+                <div class="flex items-center justify-between pt-3 border-t border-slate-800/50 mt-1">
+                     <span class="text-xs font-bold uppercase text-slate-500">Pace</span>
+                     <span id="compactVPace" class="text-sm font-bold text-slate-400">Waiting</span>
+                </div>
+             </div>
+
+             <!-- H-Mode Timers (Shows ONLY in compact-h side by side) -->
+             <div class="hidden h-mode-timers flex-row items-center justify-center gap-4 overflow-x-auto whitespace-nowrap scrollbar-hide shrink-0" style="scrollbar-width: none;">
+                <!-- Mini Case Work -->
+                <div class="flex items-center gap-2">
+                   <button id="btnHWorkToggle" class="w-8 h-8 rounded-lg flex justify-center items-center font-bold bg-indigo-600/20 text-indigo-400 hover:bg-indigo-600/40 border border-indigo-500/30 transition-colors">▶</button>
+                   <div class="flex flex-col">
+                     <span class="text-[9px] font-bold uppercase text-slate-500 leading-none">Case Work</span>
+                     <span id="compactHWorkDisplay" class="font-mono text-[15px] font-bold text-slate-200 leading-none mt-1">00:00:00</span>
+                   </div>
+                </div>
+                <!-- Mini VT -->
+                <div class="flex items-center gap-2 border-l border-slate-700/50 pl-4">
+                   <button id="btnHTvToggle" class="w-8 h-8 rounded-lg flex justify-center items-center font-bold bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/40 border border-emerald-500/30 transition-colors">▶</button>
+                   <div class="flex flex-col">
+                     <span class="text-[9px] font-bold uppercase text-slate-500 leading-none">Vert. Train</span>
+                     <span id="compactHTvDisplay" class="font-mono text-[15px] font-bold text-slate-200 leading-none mt-1">00:00:00</span>
+                   </div>
+                </div>
+                <!-- Mini Break -->
+                <div class="flex items-center gap-2 border-l border-slate-700/50 pl-4">
+                   <button id="btnHBreakToggle" class="w-8 h-8 rounded-lg flex justify-center items-center font-bold bg-rose-600/20 text-rose-400 hover:bg-rose-600/40 border border-rose-500/30 transition-colors">▶</button>
+                   <div class="flex flex-col">
+                     <span class="text-[9px] font-bold uppercase text-slate-500 leading-none">Break</span>
+                     <span id="compactHBreakDisplay" class="font-mono text-[15px] font-bold text-slate-200 leading-none mt-1">00:00:00</span>
+                   </div>
+                </div>
+                <!-- Pace -->
+                <div class="flex flex-col border-l border-slate-700/50 pl-4 justify-center">
+                     <span class="text-[9px] font-bold uppercase text-slate-500 leading-none">Pace</span>
+                     <span id="compactHPace" class="text-sm font-bold text-slate-400 leading-none mt-1">Waiting</span>
+                </div>
+             </div>
+
+             <!-- Queues Info (Right side) -->
+             <div class="flex items-center gap-3 justify-center md:justify-end w-full md:w-auto mt-2 md:mt-0 shrink-0 md:flex-1">
+                <div class="font-bold text-slate-300 text-sm">Queues (<span id="compactOverallProgress" class="text-indigo-400">0%</span>)</div>
+                <button id="btnOpenLogModal" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-[10px] font-bold uppercase transition-colors show-in-compact">Add Log</button>
+             </div>
+          </div>
+          <div class="overflow-x-auto overflow-y-hidden">
+            <table class="w-full text-left border-collapse">
+              <thead class="bg-slate-950/50 text-[11px] uppercase tracking-widest text-slate-500 font-bold">
+                <tr>
+                  <th class="px-4 py-4">Queue Name</th>
+                  <th class="px-4 py-4 hide-in-compact">AHT Goal</th>
+                  <th class="px-4 py-4 hide-in-compact">Goal</th>
+                  <th class="px-4 py-4 min-w-[120px]">Count</th>
+                  <th class="px-4 py-4 min-w-[160px] hide-in-compact">Progress</th>
+                </tr>
+              </thead>
+              <tbody id="queuesTableBody" class="divide-y divide-slate-800 text-sm">
+                <!-- Rendered via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Detailed Log Section -->
+        <div class="bg-slate-900 border border-slate-800 rounded-xl shadow-2xl overflow-hidden flex flex-col hide-in-compact">
+          <div class="bg-slate-950/50 p-4 border-b border-slate-800 flex flex-wrap gap-3 items-center">
+            <input type="text" id="logId" placeholder="ID" class="w-32 bg-slate-900 border border-slate-800 text-slate-200 rounded p-2 focus:outline-none focus:border-indigo-500 text-sm">
+            <select id="logQueue" class="w-48 bg-slate-900 border border-slate-800 text-slate-200 rounded p-2 focus:outline-none focus:border-indigo-500 text-sm">
+              <!-- populated dynamically -->
+            </select>
+            <input type="text" id="logComment" placeholder="Comment" class="flex-1 bg-slate-900 border border-slate-800 text-slate-200 rounded p-2 focus:outline-none focus:border-indigo-500 text-sm min-w-[200px]">
+            <button id="btnAddLog" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded font-bold transition-colors text-xs whitespace-nowrap">ADD LOG</button>
+          </div>
+          <div class="overflow-x-auto max-h-48 overflow-y-auto">
+            <table class="w-full text-left border-collapse">
+              <thead class="bg-slate-950/50 text-[10px] uppercase tracking-widest text-slate-500 font-bold sticky top-0">
+                <tr>
+                  <th class="py-2 px-4 whitespace-nowrap">Time</th>
+                  <th class="py-2 px-4">ID</th>
+                  <th class="py-2 px-4">Queue</th>
+                  <th class="py-2 px-4 w-full">Comment</th>
+                  <th class="py-2 px-4"></th>
+                </tr>
+              </thead>
+              <tbody id="logsTableBody" class="divide-y divide-slate-800 text-xs">
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div> <!-- End Left Panel -->
+      
+      <!-- Right Panel: Timers & Modules -->
+      <div id="rightPanelWrap" class="right-panel w-full lg:w-64 flex flex-col gap-4">
+        <!-- Timers Container (Moves to modal in compact) -->
+        <div id="timersContainer" class="flex flex-col gap-4">
+          <!-- Case Work Tracker -->
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-2xl flex flex-col">
+          <h3 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 flex justify-between items-center">Case Work <button class="opacity-60 hover:opacity-100 transition-opacity" onclick="app.openEditTimer('caseTimerSecs', 'Case Work')" title="Edit Timer"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg></button></h3>
+          <div id="workTimerDisplay" class="text-3xl font-mono text-indigo-400 tracking-tight text-center mb-4">00:00:00</div>
+          <div class="grid grid-cols-2 gap-2">
+            <button id="btnWorkToggle" class="py-1.5 bg-indigo-600/20 border border-indigo-500/40 text-indigo-300 rounded-lg text-xs font-bold transition-colors shadow-[0_0_10px_rgba(79,70,229,0.1)] hover:bg-indigo-600/30">START</button>
+            <button id="btnWorkReset" class="py-1.5 bg-slate-800 border border-slate-700 text-slate-400 rounded-lg text-xs font-bold transition-colors hover:text-white">RESET</button>
+          </div>
+        </div>
+        
+        <!-- Treino Vertical Tracker -->
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-2xl flex flex-col">
+          <h3 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 flex justify-between items-center">Vertical Training <button class="opacity-60 hover:opacity-100 transition-opacity" onclick="app.openEditTimer('tvTimerSecs', 'Vertical Training')" title="Edit Timer"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg></button></h3>
+          <div id="tvTimerDisplay" class="text-3xl font-mono text-emerald-400 tracking-tight text-center mb-4">00:00:00</div>
+          <div class="grid grid-cols-2 gap-2">
+            <button id="btnTvToggle" class="py-1.5 bg-emerald-600/20 border border-emerald-500/40 text-emerald-300 rounded-lg text-xs font-bold transition-colors shadow-[0_0_10px_rgba(16,185,129,0.1)] hover:bg-emerald-600/30">START</button>
+            <button id="btnTvReset" class="py-1.5 bg-slate-800 border border-slate-700 text-slate-400 rounded-lg text-xs font-bold transition-colors hover:text-white">RESET</button>
+          </div>
+        </div>
+        
+        <!-- Break Tracker -->
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-2xl flex flex-col">
+          <h3 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 flex justify-between items-center">Break <button class="opacity-60 hover:opacity-100 transition-opacity" onclick="app.openEditTimer('breakTimerSecs', 'Break')" title="Edit Timer"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg></button></h3>
+          <div id="breakTimerDisplay" class="text-3xl font-mono text-rose-400 tracking-tight text-center mb-4">00:00:00</div>
+          <div class="grid grid-cols-2 gap-2">
+            <button id="btnBreakToggle" class="py-1.5 bg-rose-600/20 border border-rose-500/40 text-rose-300 rounded-lg text-xs font-bold transition-colors shadow-[0_0_10px_rgba(225,29,72,0.1)] hover:bg-rose-600/30">START</button>
+            <button id="btnBreakReset" class="py-1.5 bg-slate-800 border border-slate-700 text-slate-400 rounded-lg text-xs font-bold transition-colors hover:text-white">RESET</button>
+          </div>
+        </div>
+
+        <!-- Alarm / Timer -->
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-2xl flex flex-col hide-in-compact">
+          <h3 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 flex items-center justify-between">
+            Alarm Control
+            <span id="alarmStatus" class="bg-teal-500/10 text-teal-400 px-1.5 py-0.5 rounded text-[9px] hidden">Ready</span>
+          </h3>
+          <div class="flex flex-col gap-2 mb-4">
+            <select id="alarmType" class="w-full text-xs bg-slate-950 border border-slate-800 text-slate-200 rounded p-1.5 focus:outline-none focus:border-indigo-500">
+              <option value="countdown">Countdown (Mins)</option>
+              <option value="exact">Exact (HH:MM)</option>
+            </select>
+            <input type="text" id="alarmInput" placeholder="e.g. 15 or 14:30" class="w-full text-center text-base font-mono bg-slate-950 border border-slate-800 text-indigo-400 rounded p-1.5 focus:outline-none focus:border-indigo-500">
+          </div>
+          <button id="btnAlarmSet" class="w-full py-1.5 bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg text-[10px] font-bold transition-colors text-xs">SET ALARM</button>
+        </div>
+        </div> <!-- End timers container -->
+      </div>
+    </main>
+  </div>
+
+  <!-- Modal: Timers (For Compact Mode) -->
+  <div id="modalTimers" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md flex items-center justify-center hidden z-[60]">
+    <div class="bg-slate-900 border border-slate-800 p-6 rounded-xl shadow-2xl w-full max-w-sm flex flex-col">
+       <div class="flex justify-between items-center mb-4">
+         <h2 class="text-xl font-bold text-white">Timers Control</h2>
+         <button class="text-slate-400 hover:text-white btn-close-modal">✕</button>
+       </div>
+       <div id="modalTimersContent" class="flex flex-col gap-4">
+         <!-- Timers get injected here when compact -->
+       </div>
+    </div>
+  </div>
+
+  <!-- Modal: Add Log (For Compact Mode) -->
+  <div id="modalLog" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md flex flex-col items-center justify-center hidden z-[60] p-4">
+    <div class="bg-slate-900 border border-slate-800 p-6 rounded-xl shadow-2xl w-full max-w-sm flex flex-col gap-4">
+       <h2 class="text-xl font-bold text-white flex justify-between">Add Detailed Log <button class="text-slate-400 hover:text-white btn-close-modal text-sm">✕</button></h2>
+       <input type="text" id="logIdMobile" placeholder="ID (Case/Ticket)" class="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded p-2 focus:outline-none focus:border-indigo-500 text-sm">
+       <select id="logQueueMobile" class="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded p-2 focus:outline-none focus:border-indigo-500 text-sm"></select>
+       <input type="text" id="logCommentMobile" placeholder="Comment/Reason" class="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded p-2 focus:outline-none focus:border-indigo-500 text-sm">
+       <button id="btnAddLogMobile" class="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded font-bold transition-colors text-sm">Save Log</button>
+    </div>
+  </div>
+
+  <!-- Manage Queues Modal -->
+  <div id="modalManage" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center hidden z-50">
+    <div class="bg-slate-900 border border-slate-800 p-6 rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      <h2 class="text-xl font-bold text-white mb-4">Manage Queues</h2>
+      <div class="flex gap-2 text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 px-2">
+        <span class="flex-1">Queue Name</span>
+        <span class="w-20 text-center">Goal</span>
+        <span class="w-10"></span>
+      </div>
+      <div id="manageQueuesList" class="space-y-3 mb-6"></div>
+      <button id="btnAddQueue" class="w-full py-3 border border-dashed border-slate-700 text-slate-500 hover:text-slate-300 hover:border-slate-500 transition-colors rounded-lg text-sm font-bold mb-6">+ Add Queue</button>
+      <div class="flex justify-end gap-3">
+        <button class="btn-close-modal px-4 py-2 bg-slate-800 border border-slate-700 text-slate-300 hover:text-white transition-colors rounded-lg text-sm font-semibold">Cancel</button>
+        <button id="btnSaveQueues" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-semibold shadow-lg shadow-indigo-600/20 transition-colors">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div id="modalSettings" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center hidden z-50">
+    <div class="bg-slate-900 border border-slate-800 p-6 rounded-xl shadow-2xl w-full max-w-sm">
+      <h2 class="text-xl font-bold text-white mb-4">Settings</h2>
+      
+      <div class="mb-4">
+        <label class="block mb-2 text-xs font-bold text-slate-500 uppercase tracking-widest">Case Work (Hours)</label>
+        <input type="number" id="inputCaseWork" value="7.5" step="0.5" class="w-full p-2 bg-slate-950 border border-slate-700 text-indigo-400 rounded font-bold focus:outline-none focus:border-indigo-500">
+      </div>
+      
+      <div class="mb-4">
+        <label class="block mb-2 text-xs font-bold text-slate-500 uppercase tracking-widest">Break Time (Hours)</label>
+        <input type="number" id="inputBreakTime" value="1.0" step="0.5" class="w-full p-2 bg-slate-950 border border-slate-700 text-rose-400 rounded font-bold focus:outline-none focus:border-rose-500">
+      </div>
+
+      <div class="mb-4">
+        <label class="block mb-2 text-xs font-bold text-slate-500 uppercase tracking-widest">Custom Background URL</label>
+        <input type="text" id="inputBackgroundUrl" placeholder="https://..." class="w-full p-2 bg-slate-950 border border-slate-700 text-slate-300 rounded font-mono text-sm focus:outline-none focus:border-indigo-500">
+      </div>
+
+      <div class="mb-6 border-t border-slate-800 pt-4">
+        <label class="block mb-3 text-xs font-bold text-slate-500 uppercase tracking-widest">Weekly VT Goal (SUN-SAT)</label>
+        <div class="flex gap-2">
+          <div class="flex-1">
+             <label class="block mb-1 text-[10px] uppercase text-slate-500">HOURS</label>
+             <input type="number" id="inputTvHours" value="2" min="0" class="w-full p-2 bg-slate-950 border border-slate-700 text-emerald-400 rounded font-bold focus:outline-none focus:border-emerald-500">
+          </div>
+          <div class="flex-1">
+             <label class="block mb-1 text-[10px] uppercase text-slate-500">MINUTES</label>
+             <input type="number" id="inputTvMinutes" value="0" min="0" max="59" class="w-full p-2 bg-slate-950 border border-slate-700 text-emerald-400 rounded font-bold focus:outline-none focus:border-emerald-500">
+          </div>
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-3">
+        <button class="btn-close-modal px-4 py-2 bg-slate-800 border border-slate-700 text-slate-300 hover:text-white transition-colors rounded-lg text-sm font-semibold">Cancel</button>
+        <button id="btnSaveSettings" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-semibold shadow-lg shadow-indigo-600/20 transition-colors">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- History Modal -->
+  <div id="modalHistory" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center hidden z-50">
+    <div class="bg-slate-900 border border-slate-800 p-6 rounded-xl shadow-2xl w-full max-w-2xl">
+      <h2 class="text-xl font-bold text-white mb-4">7-Day Productivity History</h2>
+      <canvas id="historyChart" width="400" height="200"></canvas>
+      <div class="flex justify-end mt-6">
+        <button class="btn-close-modal px-4 py-2 bg-slate-800 border border-slate-700 text-slate-300 hover:text-white transition-colors rounded-lg text-sm font-semibold">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Alarm Triggered Modal -->
+  <div id="modalAlarmTrigger" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md flex items-center justify-center hidden z-[100]">
+    <div class="bg-slate-900 border border-slate-800 p-8 rounded-xl shadow-2xl flex flex-col items-center">
+      <h2 class="text-4xl font-bold text-rose-500 animate-pulse mb-8 tracking-tight">⏰ Time's Up!</h2>
+      <div class="flex gap-4">
+        <button id="btnSnooze" class="px-6 py-3 bg-slate-800 border border-slate-700 text-slate-300 hover:text-white transition-colors rounded-lg text-sm font-semibold shadow-lg shadow-slate-900">Snooze (5m)</button>
+        <button id="btnStopAlarm" class="px-6 py-3 bg-rose-600/20 border border-rose-500/40 text-rose-400 hover:bg-rose-600/30 transition-colors rounded-lg text-sm font-bold shadow-[0_0_15px_rgba(225,29,72,0.2)]">Stop Alarm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Timer Modal -->
+  <div id="modalEditTimer" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center hidden z-50">
+    <div class="bg-slate-900 border border-slate-800 p-6 rounded-xl shadow-2xl w-full max-w-xs">
+      <h2 class="text-xl font-bold text-white mb-4" id="editTimerTitle">Edit Timer</h2>
+      <input type="hidden" id="editTimerTarget" value="">
+      <div class="flex gap-4 mb-6 justify-center">
+        <div class="flex flex-col items-center">
+          <label class="text-[10px] text-slate-500 uppercase font-bold mb-1">HH</label>
+          <input type="number" id="editTimerH" min="0" max="23" class="w-14 bg-slate-950 border border-slate-700 text-slate-200 text-center text-lg rounded-lg outline-none focus:border-indigo-500 py-1" value="0">
+        </div>
+        <div class="flex flex-col items-center text-slate-500 justify-end pb-2">:</div>
+        <div class="flex flex-col items-center">
+          <label class="text-[10px] text-slate-500 uppercase font-bold mb-1">MM</label>
+          <input type="number" id="editTimerM" min="0" max="59" class="w-14 bg-slate-950 border border-slate-700 text-slate-200 text-center text-lg rounded-lg outline-none focus:border-indigo-500 py-1" value="0">
+        </div>
+        <div class="flex flex-col items-center text-slate-500 justify-end pb-2">:</div>
+        <div class="flex flex-col items-center">
+          <label class="text-[10px] text-slate-500 uppercase font-bold mb-1">SS</label>
+          <input type="number" id="editTimerS" min="0" max="59" class="w-14 bg-slate-950 border border-slate-700 text-slate-200 text-center text-lg rounded-lg outline-none focus:border-indigo-500 py-1" value="0">
+        </div>
+      </div>
+      <div class="flex gap-2 text-[10px] justify-center mb-4 text-emerald-500 bg-emerald-500/10 py-1 px-2 rounded hidden" id="editTimerFeedback">Saved seamlessly!</div>
+      <div class="flex justify-between gap-3">
+        <button class="btn-close-modal px-4 py-2 bg-slate-800 border border-slate-700 text-slate-300 hover:text-white transition-colors rounded-lg text-sm font-semibold">Cancel</button>
+        <button id="btnSaveTimer" class="flex-1 py-2 bg-indigo-600 rounded-lg text-white hover:bg-indigo-500 transition-colors text-sm font-semibold">Save New Time</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main JavaScript App -->
+  <script>
+    // --- Mock GAS google.script.run for Local Preview ---
+    if (typeof window.google === 'undefined') {
+      console.info("Initializing fallback mocked google.script environment.");
+      window.google = { script: { run: {
+        withSuccessHandler: function(cb) { return {
+          withFailureHandler: function(errCb) { return {
+            loadData: function() { setTimeout(() => cb(localStorage.getItem('gas_mock_data')), 300); },
+            saveData: function(dataStr) { localStorage.setItem('gas_mock_data', dataStr); setTimeout(() => cb(true), 300); },
+            getHistory: function() {
+              let labels = [], data = [];
+              for(let i=6; i>=0; i--){ let d = new Date(); d.setDate(d.getDate()-i); labels.push(d.toISOString().split('T')[0]); data.push(Math.floor(Math.random()*40)+10); }
+              setTimeout(() => cb(JSON.stringify({labels, data})), 300);
+            },
+            exportToGoogleSheet: function() {
+              setTimeout(() => cb(JSON.stringify({success: true, url: 'https://docs.google.com/spreadsheets/d/mockId'})), 800);
+            }
+          }}
+        }}
+      }}};
+    }
+
+    // --- State Management ---
+    const app = {
+      state: {
+        theme: 'light',
+        queues: [
+          { id: 'q1', name: 'Support Tickets', goal: 20, count: 0, ahtGoal: 300 },
+          { id: 'q2', name: 'Escalations', goal: 5, count: 0, ahtGoal: 1200 }
+        ],
+        settings: { caseWorkHours: 7.5, breakTimeHours: 1.0, tvGoalHours: 2, tvGoalMinutes: 0 },
+        caseTimerActive: false,
+        caseTimerSecs: 0,
+        breakTimerActive: false,
+        breakTimerSecs: 0,
+        tvTimerActive: false,
+        tvTimerSecs: 0,
+        pastTvSecsThisWeek: 0,
+        detailedLogs: []
+      },
+      lastTickTime: Date.now(),
+      alarmInterval: null,
+      oscillator: null,
+      historyChartInstance: null,
+
+      init: function() {
+        this.bindEvents();
+        this.loadSettings();
+        // Start live ticker for timers
+        setInterval(() => this.tickTimers(), 1000);
+        this.fetchData();
+        this.scheduleAutomaticSync();
+      },
+
+      scheduleAutomaticSync: function() {
+        const now = new Date();
+        const next = new Date();
+        
+        // Schedule next hourly sync at HH:30
+        if (now.getMinutes() >= 30) {
+          next.setHours(now.getHours() + 1);
+        }
+        next.setMinutes(30);
+        next.setSeconds(0);
+        next.setMilliseconds(0);
+        
+        const delay = next.getTime() - now.getTime();
+        
+        setTimeout(() => {
+          this.syncToSheet(true); // background sync
+          setInterval(() => {
+            this.syncToSheet(true);
+          }, 60 * 60 * 1000);
+        }, delay);
+        
+        // Sync on visibility change (e.g., closing window, shifting tab on mobile)
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'hidden') {
+            this.syncToSheet(true);
+          }
+        });
+        
+        // Sync on close
+        window.addEventListener('beforeunload', () => {
+          this.syncToSheet(true);
+        });
+      },
+
+      bindEvents: function() {
+        // Compact Toggles
+        const setMode = (mode) => {
+          document.documentElement.classList.remove('compact-v', 'compact-h', 'compact-f');
+          const tContainer = document.getElementById('timersContainer');
+          
+          if (mode === 'normal') {
+             document.getElementById('rightPanelWrap').appendChild(tContainer);
+             document.getElementById('modalTimers').classList.add('hidden');
+          } else {
+             document.documentElement.classList.add(`compact-${mode}`);
+             document.getElementById('modalTimersContent').appendChild(tContainer);
+          }
+        };
+
+        document.getElementById('btnCompactV').addEventListener('click', () => setMode('v'));
+        document.getElementById('btnCompactH').addEventListener('click', () => setMode('h'));
+        document.getElementById('btnCompactF').addEventListener('click', () => setMode('f'));
+        document.getElementById('btnNormalMode').addEventListener('click', () => setMode('normal'));
+        
+        // Ensure Modal Close buttons work for all Modals including native generic handler
+        document.querySelectorAll('.btn-close-modal').forEach(btn => {
+           btn.addEventListener('click', (e) => {
+              e.target.closest('.fixed.inset-0').classList.add('hidden');
+           });
+        });
+
+        // Theme
+        document.getElementById('btnTheme').addEventListener('click', () => this.toggleTheme());
+        
+        // Modals
+        document.getElementById('btnManage').addEventListener('click', () => this.openManageQueues());
+        
+        // Reset Counts
+        let resetArmed = false;
+        let resetArmedTimeout = null;
+        document.getElementById('btnResetCounts').addEventListener('click', (e) => {
+          if (!resetArmed) {
+            resetArmed = true;
+            e.target.innerText = 'Sure? Click again';
+            e.target.classList.replace('bg-rose-600/20', 'bg-rose-600');
+            e.target.classList.replace('text-rose-400', 'text-white');
+            resetArmedTimeout = setTimeout(() => {
+              resetArmed = false;
+              e.target.innerText = 'Reset Counts';
+              e.target.classList.replace('bg-rose-600', 'bg-rose-600/20');
+              e.target.classList.replace('text-white', 'text-rose-400');
+            }, 3000);
+          } else {
+            clearTimeout(resetArmedTimeout);
+            resetArmed = false;
+            e.target.innerText = 'Reset Counts';
+            e.target.classList.replace('bg-rose-600', 'bg-rose-600/20');
+            e.target.classList.replace('text-white', 'text-rose-400');
+            
+            this.state.queues.forEach(q => q.count = 0);
+            this.renderUI();
+            this.saveData();
+          }
+        });
+
+        document.getElementById('btnSettings').addEventListener('click', () => {
+          document.getElementById('inputCaseWork').value = this.state.settings.caseWorkHours || 7.5;
+          document.getElementById('inputBreakTime').value = this.state.settings.breakTimeHours || 1.0;
+          document.getElementById('inputTvHours').value = this.state.settings.tvGoalHours || 2;
+          document.getElementById('inputTvMinutes').value = this.state.settings.tvGoalMinutes || 0;
+          document.getElementById('inputBackgroundUrl').value = this.state.settings.backgroundUrl || '';
+          document.getElementById('modalSettings').classList.remove('hidden');
+        });
+        document.getElementById('btnHistory').addEventListener('click', () => this.openHistory());
+        
+        // Modal Closers
+        document.querySelectorAll('.btn-close-modal').forEach(btn => {
+          btn.addEventListener('click', (e) => e.target.closest('.fixed').classList.add('hidden'));
+        });
+
+        // Save Modals
+        document.getElementById('btnSaveSettings').addEventListener('click', () => {
+          this.state.settings.caseWorkHours = parseFloat(document.getElementById('inputCaseWork').value) || 7.5;
+          this.state.settings.breakTimeHours = parseFloat(document.getElementById('inputBreakTime').value) || 1.0;
+          this.state.settings.tvGoalHours = parseInt(document.getElementById('inputTvHours').value) || 0;
+          this.state.settings.tvGoalMinutes = parseInt(document.getElementById('inputTvMinutes').value) || 0;
+          this.state.settings.backgroundUrl = document.getElementById('inputBackgroundUrl').value.trim();
+          document.getElementById('modalSettings').classList.add('hidden');
+          this.saveData();
+          this.renderUI();
+          this.applyBackground();
+        });
+        document.getElementById('btnAddQueue').addEventListener('click', () => this.addQueueRow());
+        document.getElementById('btnSaveQueues').addEventListener('click', () => this.saveQueues());
+        
+        // Save Timer Edit
+        document.getElementById('btnSaveTimer').addEventListener('click', () => {
+          const target = document.getElementById('editTimerTarget').value;
+          const h = parseInt(document.getElementById('editTimerH').value) || 0;
+          const m = parseInt(document.getElementById('editTimerM').value) || 0;
+          const s = parseInt(document.getElementById('editTimerS').value) || 0;
+          const totalSecs = (h * 3600) + (m * 60) + s;
+          
+          if (this.state[target] !== undefined) {
+            this.state[target] = totalSecs;
+            this.updateTimerUI();
+            this.saveData();
+            const feedback = document.getElementById('editTimerFeedback');
+            feedback.classList.remove('hidden');
+            setTimeout(() => {
+               feedback.classList.add('hidden');
+               document.getElementById('modalEditTimer').classList.add('hidden');
+            }, 1000);
+          }
+        });
+        
+        // Export / Sync
+        document.getElementById('btnExport').addEventListener('click', () => this.syncToSheet());
+
+        // Detailed Log
+        document.getElementById('btnAddLog').addEventListener('click', () => this.addDetailedLog());
+        document.getElementById('btnOpenLogModal').addEventListener('click', () => document.getElementById('modalLog').classList.remove('hidden'));
+        document.getElementById('btnAddLogMobile').addEventListener('click', () => {
+           document.getElementById('logId').value = document.getElementById('logIdMobile').value;
+           document.getElementById('logQueue').value = document.getElementById('logQueueMobile').value;
+           document.getElementById('logComment').value = document.getElementById('logCommentMobile').value;
+           this.addDetailedLog();
+           document.getElementById('logIdMobile').value = '';
+           document.getElementById('logCommentMobile').value = '';
+           document.getElementById('modalLog').classList.add('hidden');
+        });
+
+        // Timers
+        document.getElementById('btnWorkToggle').addEventListener('click', () => this.toggleWorkTimer());
+        document.getElementById('btnWorkReset').addEventListener('click', () => { this.state.caseTimerSecs = 0; this.updateTimerUI(); this.saveData(); });
+        
+        document.getElementById('btnBreakToggle').addEventListener('click', () => this.toggleBreakTimer());
+        document.getElementById('btnBreakReset').addEventListener('click', () => { this.state.breakTimerSecs = 0; this.updateTimerUI(); this.saveData(); });
+        
+        document.getElementById('btnTvToggle').addEventListener('click', () => this.toggleTvTimer());
+        document.getElementById('btnTvReset').addEventListener('click', () => { this.state.tvTimerSecs = 0; this.updateTimerUI(); this.saveData(); });
+
+        // Compact H-Mode Minified Timers
+        const hmWork = document.getElementById('btnHWorkToggle');
+        if (hmWork) hmWork.addEventListener('click', () => this.toggleWorkTimer());
+        
+        const hmTv = document.getElementById('btnHTvToggle');
+        if (hmTv) hmTv.addEventListener('click', () => this.toggleTvTimer());
+
+        const hmBreak = document.getElementById('btnHBreakToggle');
+        if (hmBreak) hmBreak.addEventListener('click', () => this.toggleBreakTimer());
+
+        // Compact V-Mode Minified Timers
+        const vmWork = document.getElementById('btnVWorkToggle');
+        if (vmWork) vmWork.addEventListener('click', () => this.toggleWorkTimer());
+        
+        const vmTv = document.getElementById('btnVTvToggle');
+        if (vmTv) vmTv.addEventListener('click', () => this.toggleTvTimer());
+
+        const vmBreak = document.getElementById('btnVBreakToggle');
+        if (vmBreak) vmBreak.addEventListener('click', () => this.toggleBreakTimer());
+
+        // Alarm
+        document.getElementById('btnAlarmSet').addEventListener('click', () => this.setAlarm());
+        document.getElementById('btnSnooze').addEventListener('click', () => this.snoozeAlarm());
+        document.getElementById('btnStopAlarm').addEventListener('click', () => this.stopAlarm());
+      },
+
+      loadSettings: function() {
+        if(localStorage.getItem('theme') === 'dark') {
+          this.state.theme = 'dark';
+          document.documentElement.classList.add('dark');
+          document.getElementById('themeIcon').innerText = '☀️';
+        }
+      },
+
+      toggleTheme: function() {
+        this.state.theme = this.state.theme === 'light' ? 'dark' : 'light';
+        document.documentElement.classList.toggle('dark');
+        document.getElementById('themeIcon').innerText = this.state.theme === 'light' ? '🌙' : '☀️';
+        localStorage.setItem('theme', this.state.theme);
+      },
+
+      applyBackground: function() {
+        const bgUrl = this.state.settings.backgroundUrl;
+        if (bgUrl) {
+          document.body.style.backgroundImage = `url('${bgUrl}')`;
+          document.body.style.backgroundSize = 'cover';
+          document.body.style.backgroundPosition = 'center';
+          document.body.style.backgroundAttachment = 'fixed';
+          // Ensure readability by slightly increasing backdrop contrast on panels if needed
+          document.body.classList.remove('bg-slate-950');
+        } else {
+          document.body.style.backgroundImage = 'none';
+          document.body.classList.add('bg-slate-950');
+        }
+      },
+
+      fetchData: function() {
+        google.script.run
+          .withSuccessHandler((response) => {
+            if(response) {
+              try {
+                const parsed = JSON.parse(response);
+                if(parsed.queues) {
+                  // Deduplicate IDs on load to fix any previously corrupted states
+                  const seenIds = new Set();
+                  parsed.queues.forEach(q => {
+                    if (!q.id || seenIds.has(q.id)) {
+                      q.id = 'q_fix_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
+                    }
+                    seenIds.add(q.id);
+                  });
+                  this.state.queues = parsed.queues;
+                }
+                if(parsed.settings) this.state.settings = parsed.settings;
+                if(parsed.caseTimerSecs) this.state.caseTimerSecs = parsed.caseTimerSecs;
+                if(parsed.breakTimerSecs) this.state.breakTimerSecs = parsed.breakTimerSecs;
+                if(parsed.tvTimerSecs) this.state.tvTimerSecs = parsed.tvTimerSecs;
+                if(parsed.pastTvSecsThisWeek !== undefined) this.state.pastTvSecsThisWeek = parsed.pastTvSecsThisWeek;
+                if(parsed.detailedLogs) this.state.detailedLogs = parsed.detailedLogs;
+              } catch(e) {}
+            }
+            this.renderUI();
+            this.renderLogs();
+            this.updateTimerUI();
+            this.applyBackground();
+          })
+          .withFailureHandler(err => console.error(err))
+          .loadData();
+      },
+
+      saveData: function() {
+        const payload = JSON.stringify({
+          queues: this.state.queues,
+          settings: this.state.settings,
+          caseTimerSecs: this.state.caseTimerSecs,
+          breakTimerSecs: this.state.breakTimerSecs,
+          tvTimerSecs: this.state.tvTimerSecs,
+          detailedLogs: this.state.detailedLogs
+        });
+        google.script.run.saveData(payload);
+      },
+
+      renderUI: function() {
+        const tbody = document.getElementById('queuesTableBody');
+        tbody.innerHTML = '';
+        
+        let totalGoal = 0, totalCount = 0, sumProgress = 0;
+        const caseWorkHours = this.state.settings.caseWorkHours || 7.5;
+
+        this.state.queues.forEach((q, index) => {
+          totalGoal += q.goal;
+          totalCount += q.count;
+          
+          // Cálculo individual do AHT por Fila: (Case Work Horas / Goal da Fila específica)
+          q.ahtGoal = q.goal > 0 ? Math.round((caseWorkHours * 3600) / q.goal) : 0;
+          
+          let rawProgress = q.goal > 0 ? (q.count / q.goal) * 100 : 0;
+          let progress = q.goal > 0 ? Math.min(100, Math.round(rawProgress)) : 0;
+          sumProgress += rawProgress;
+          
+          let ahtGoalStr = this.formatSeconds(q.ahtGoal);
+
+          const tr = document.createElement('tr');
+          tr.className = "hover:bg-slate-800/20 transition-colors";
+          tr.innerHTML = `
+            <td class="px-4 py-3 font-medium text-slate-200">${q.name}</td>
+            <td class="px-4 py-3 text-slate-400 font-mono hide-in-compact">${ahtGoalStr}</td>
+            <td class="px-4 py-3 text-slate-400 font-bold hide-in-compact">${q.goal}</td>
+            <td class="px-4 py-3">
+              <div class="flex items-center gap-2 text-base">
+                <button class="w-7 h-7 rounded bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-300 hover:text-white" onclick="app.updateCount('${q.id}', -1)">-</button>
+                <input type="number" class="w-12 bg-slate-950 border border-slate-700 text-center rounded text-indigo-400 font-bold p-1 max-w-full" value="${q.count}" onchange="app.setCount('${q.id}', this.value)">
+                <button class="w-7 h-7 rounded bg-indigo-600 flex items-center justify-center hover:bg-indigo-500 text-white" onclick="app.updateCount('${q.id}', 1)">+</button>
+              </div>
+            </td>
+            <td class="px-4 py-3 min-w-[140px] hide-in-compact">
+              <div class="flex items-center gap-3">
+                <div class="flex-1 h-2 bg-slate-800 rounded-full overflow-hidden">
+                  <div class="bg-indigo-500 h-full transition-all duration-300" style="width: ${progress}%"></div>
+                </div>
+                <span class="text-xs text-slate-400 min-w-[30px]">${rawProgress.toFixed(2)}%</span>
+              </div>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+        
+        // Summary Updates
+        this.updateTvSummaryUI();
+        document.getElementById('summaryProgress').innerHTML = `${sumProgress.toFixed(2)}% <span class="text-slate-500 font-light mx-2">|</span> <span class="text-indigo-400" title="Total Count">${totalCount}</span>`;
+        document.getElementById('compactOverallProgress').innerHTML = `${sumProgress.toFixed(2)}%<span class="text-slate-500 mx-1">|</span><span class="text-indigo-300">${totalCount}</span>`;
+
+        this.calculatePace();
+        this.updateLogQueueSelect();
+      },
+      
+      updateLogQueueSelect: function() {
+        const sel = document.getElementById('logQueue');
+        const selMobile = document.getElementById('logQueueMobile');
+        const currentVal = sel.value;
+        const currentValMobile = selMobile.value;
+        
+        sel.innerHTML = '<option value="">-- Select a Queue --</option>';
+        selMobile.innerHTML = '<option value="">-- Select a Queue --</option>';
+        
+        this.state.queues.forEach(q => {
+          const opt = document.createElement('option');
+          opt.value = q.name;
+          opt.innerText = q.name;
+          sel.appendChild(opt);
+          selMobile.appendChild(opt.cloneNode(true));
+        });
+        if (currentVal && Array.from(sel.options).some(o => o.value === currentVal)) sel.value = currentVal;
+        if (currentValMobile && Array.from(selMobile.options).some(o => o.value === currentValMobile)) selMobile.value = currentValMobile;
+      },
+      
+      addDetailedLog: function() {
+        const id = document.getElementById('logId').value.trim();
+        const queue = document.getElementById('logQueue').value;
+        const comment = document.getElementById('logComment').value.trim();
+        
+        if (!id || !queue) return alert("Please fill in the ID and select a Queue.");
+        
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        
+        this.state.detailedLogs.push({
+          id: id,
+          queue: queue,
+          comment: comment,
+          timeStr: timeStr,
+          timestamp: now.toISOString()
+        });
+        
+        document.getElementById('logId').value = '';
+        document.getElementById('logComment').value = '';
+        
+        this.renderLogs();
+        this.saveData();
+      },
+      
+      removeLog: function(index) {
+        this.state.detailedLogs.splice(index, 1);
+        this.renderLogs();
+        this.saveData();
+      },
+      
+      renderLogs: function() {
+        const tbody = document.getElementById('logsTableBody');
+        tbody.innerHTML = '';
+        this.state.detailedLogs.forEach((log, index) => {
+          const tr = document.createElement('tr');
+          tr.className = "hover:bg-slate-800/20";
+          tr.innerHTML = `
+            <td class="px-4 py-2 text-slate-400 font-mono">${log.timeStr || ''}</td>
+            <td class="px-4 py-2 text-white font-mono">${log.id}</td>
+            <td class="px-4 py-2 text-indigo-400 font-semibold">${log.queue}</td>
+            <td class="px-4 py-2 text-slate-300 break-words w-full max-w-sm truncate whitespace-normal" title="${log.comment}">${log.comment}</td>
+            <td class="px-4 py-2 text-right">
+               <button class="text-rose-400 hover:text-rose-300 text-xs font-bold px-2 py-1 bg-rose-500/10 rounded" onclick="app.removeLog(${index})">X</button>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+      },
+
+      updateCount: function(id, offset) {
+        const q = this.state.queues.find(x => x.id === id);
+        if(q) { q.count = Math.max(0, q.count + offset); this.renderUI(); this.saveData(); }
+      },
+
+      setCount: function(id, val) {
+        const q = this.state.queues.find(x => x.id === id);
+        if(q) { q.count = Math.max(0, parseInt(val) || 0); this.renderUI(); this.saveData(); }
+      },
+
+      calculatePace: function() {
+        const paceEl = document.getElementById('summaryPace');
+        const hPaceEl = document.getElementById('compactHPace');
+        const vPaceEl = document.getElementById('compactVPace');
+        const queues = this.state.queues;
+        if (queues.length === 0 || this.state.caseTimerSecs === 0) {
+          paceEl.innerHTML = '<div class="flex items-center gap-2 mt-2"><div class="w-3 h-3 rounded-full bg-slate-600"></div><span class="text-slate-400 text-xl font-bold">Waiting</span></div>';
+          if (hPaceEl) { hPaceEl.innerText = "Waiting"; hPaceEl.className = "text-[11px] font-bold mt-1 text-slate-400 leading-none"; }
+          if (vPaceEl) { vPaceEl.innerText = "Waiting"; vPaceEl.className = "text-sm font-bold text-slate-400"; }
+          return;
+        }
+
+        let totalGoal = 0;
+        let sumProgress = 0;
+        queues.forEach(q => {
+           totalGoal += q.goal;
+           let rawProgress = q.goal > 0 ? (q.count / q.goal) * 100 : 0;
+           sumProgress += rawProgress;
+        });
+
+        if (totalGoal === 0) {
+           paceEl.innerHTML = '<div class="flex items-center gap-2 mt-2"><div class="w-3 h-3 rounded-full bg-slate-600"></div><span class="text-slate-400 text-xl font-bold">Waiting</span></div>';
+           if (hPaceEl) { hPaceEl.innerText = "Waiting"; hPaceEl.className = "text-[11px] font-bold mt-1 text-slate-400 leading-none"; }
+           if (vPaceEl) { vPaceEl.innerText = "Waiting"; vPaceEl.className = "text-sm font-bold text-slate-400"; }
+           return;
+        }
+
+        // Re-construct the fractions correctly from actual state
+        const elapsedHours = this.state.caseTimerSecs / 3600;
+        const totalHours = this.state.settings.caseWorkHours || 7.5;
+        
+        // Progress is defined by the literal sum (since user specifically requested a raw sum of progress)
+        const actualFraction = sumProgress / 100;
+        const expectedFraction = elapsedHours / totalHours;
+        const diffFraction = actualFraction - expectedFraction;
+
+        // Map mathematical fraction back to generic time & items equivalents
+        const timeDiffSecs = Math.round(Math.abs(diffFraction * (totalHours * 3600)));
+        const timeStr = this.formatSeconds(timeDiffSecs);
+        
+        const diffItems = diffFraction * totalGoal;
+        const diffStr = Math.abs(diffItems).toFixed(1);
+
+        // Margin of error: at least 0.5% buffer, or 5% of CURRENT expected volume
+        const marginFraction = Math.max(0.005, expectedFraction * 0.05);
+        let statusHtml = '';
+        let hPaceStr = '';
+        let hPaceClass = '';
+        let vPaceClass = '';
+        let cardBorderClass = 'border-slate-800';
+
+        if (diffFraction >= marginFraction) {
+          statusHtml = `<div class="flex items-center gap-2 mt-2"><div class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></div><span class="text-emerald-500 text-xl font-bold tracking-tight">Ahead</span><span class="text-emerald-500/70 text-sm ml-2 font-medium">(+${timeStr})</span></div>`;
+          hPaceStr = `Ahead (+${timeStr})`;
+          hPaceClass = "text-[11px] font-bold mt-1 text-emerald-400 leading-none";
+          vPaceClass = "text-sm font-bold text-emerald-400";
+          cardBorderClass = 'border-emerald-500/50';
+        } else if (diffFraction <= -marginFraction) {
+          statusHtml = `<div class="flex items-center gap-2 mt-2"><div class="w-3 h-3 rounded-full bg-rose-500 animate-pulse"></div><span class="text-rose-500 text-xl font-bold tracking-tight">Behind</span><span class="text-rose-500/70 text-sm ml-2 font-medium">(-${timeStr})</span></div>`;
+          hPaceStr = `Behind (-${timeStr})`;
+          hPaceClass = "text-[11px] font-bold mt-1 text-rose-400 leading-none";
+          vPaceClass = "text-sm font-bold text-rose-400";
+          cardBorderClass = 'border-rose-500/50';
+        } else {
+          let sign = diffFraction > 0 ? '+' : (diffFraction < 0 ? '-' : '');
+          statusHtml = `<div class="flex items-center gap-2 mt-2"><div class="w-3 h-3 rounded-full bg-indigo-500"></div><span class="text-indigo-400 text-xl font-bold tracking-tight">On Pace</span><span class="text-indigo-400/70 text-sm ml-2 font-medium">(${sign}${timeStr})</span></div>`;
+          hPaceStr = `On Pace (${sign}${timeStr})`;
+          hPaceClass = "text-[11px] font-bold mt-1 text-indigo-400 leading-none";
+          vPaceClass = "text-sm font-bold text-indigo-400";
+          cardBorderClass = 'border-indigo-500/50';
+        }
+        
+        paceEl.innerHTML = statusHtml;
+        if (hPaceEl) {
+          hPaceEl.innerText = hPaceStr;
+          hPaceEl.className = hPaceClass;
+        }
+        if (vPaceEl) {
+          vPaceEl.innerText = hPaceStr;
+          vPaceEl.className = vPaceClass;
+        }
+        
+        const qCard = document.getElementById('queuesCard');
+        qCard.className = `bg-slate-900 border-2 ${cardBorderClass} rounded-xl overflow-hidden flex flex-col shadow-2xl transition-colors duration-300`;
+      },
+
+      // --- Modals Logic ---
+      openManageQueues: function() {
+        const list = document.getElementById('manageQueuesList');
+        list.innerHTML = '';
+        this.state.queues.forEach((q, i) => {
+          const div = document.createElement('div');
+          div.className = "flex flex-col sm:flex-row gap-2 items-center p-2 border border-slate-800 bg-slate-950 rounded";
+          div.innerHTML = `
+            <input type="hidden" data-field="id" value="${q.id}">
+            <input type="text" class="flex-1 p-2 bg-transparent border border-slate-800 rounded font-bold text-slate-200 focus:border-indigo-500 focus:outline-none" value="${q.name}" data-idx="${i}" data-field="name" placeholder="Queue Name">
+            <input type="number" class="w-20 p-2 bg-transparent border border-slate-800 rounded text-center text-slate-200 focus:border-indigo-500 focus:outline-none" value="${q.goal}" data-idx="${i}" data-field="goal" placeholder="Goal">
+            <button class="w-10 h-10 flex items-center justify-center bg-rose-600/20 border border-rose-500/40 text-rose-400 shrink-0 rounded hover:bg-rose-600/30 transition-colors" onclick="app.removeQueueRow(this)">X</button>
+          `;
+          list.appendChild(div);
+        });
+        document.getElementById('modalManage').classList.remove('hidden');
+      },
+      addQueueRow: function() {
+        const list = document.getElementById('manageQueuesList');
+        const idx = list.children.length;
+        const newId = 'q_new_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
+        const div = document.createElement('div');
+        div.className = "flex flex-col sm:flex-row gap-2 items-center p-2 border border-slate-800 bg-slate-950 rounded";
+        div.innerHTML = `
+          <input type="hidden" data-field="id" value="${newId}">
+          <input type="text" class="flex-1 p-2 bg-transparent border border-slate-800 rounded font-bold text-slate-200 focus:border-indigo-500 focus:outline-none" value="New Queue" data-idx="${idx}" data-field="name">
+          <input type="number" class="w-20 p-2 bg-transparent border border-slate-800 rounded text-center text-slate-200 focus:border-indigo-500 focus:outline-none" value="10" data-idx="${idx}" data-field="goal">
+          <button class="w-10 h-10 flex items-center justify-center bg-rose-600/20 border border-rose-500/40 text-rose-400 shrink-0 rounded hover:bg-rose-600/30 transition-colors" onclick="app.removeQueueRow(this)">X</button>
+        `;
+        list.appendChild(div);
+      },
+      removeQueueRow: function(btn) {
+        btn.parentElement.remove();
+      },
+      saveQueues: function() {
+        const list = document.getElementById('manageQueuesList');
+        const newQueues = [];
+        const seenIds = new Set();
+        Array.from(list.children).forEach(row => {
+          const idInput = row.querySelector('[data-field="id"]');
+          const nameInput = row.querySelector('[data-field="name"]');
+          const goalInput = row.querySelector('[data-field="goal"]');
+          
+          if(nameInput && nameInput.value.trim() !== '') {
+            let qId = idInput ? idInput.value : 'q_new_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
+            
+            // Deduplicate IDs safely in case old data has conflicts
+            if(seenIds.has(qId)) {
+              qId = 'q_dedup_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
+            }
+            seenIds.add(qId);
+            
+            let existingQ = this.state.queues.find(q => q.id === (idInput ? idInput.value : null));
+            
+            newQueues.push({
+              id: qId,
+              name: nameInput.value.trim(),
+              goal: parseInt(goalInput.value) || 0,
+              ahtGoal: 0, // Will be mathematically overridden in renderUI
+              count: existingQ ? existingQ.count : 0
+            });
+          }
+        });
+        this.state.queues = newQueues;
+        this.renderUI();
+        this.saveData();
+        document.getElementById('modalManage').classList.add('hidden');
+      },
+
+      openEditTimer: function(stateTargetKey, title) {
+        let currentSecs = this.state[stateTargetKey] || 0;
+        const h = Math.floor(currentSecs / 3600);
+        const m = Math.floor((currentSecs % 3600) / 60);
+        const s = currentSecs % 60;
+        
+        document.getElementById('editTimerTitle').innerText = "Edit: " + title;
+        document.getElementById('editTimerTarget').value = stateTargetKey;
+        document.getElementById('editTimerH').value = h;
+        document.getElementById('editTimerM').value = m;
+        document.getElementById('editTimerS').value = s;
+        document.getElementById('editTimerFeedback').classList.add('hidden');
+        document.getElementById('modalEditTimer').classList.remove('hidden');
+      },
+
+      openHistory: function() {
+        google.script.run.withSuccessHandler(res => {
+          const data = JSON.parse(res);
+          this.renderChart(data.labels, data.data);
+          document.getElementById('modalHistory').classList.remove('hidden');
+        }).getHistory();
+      },
+
+      renderChart: function(labels, data) {
+        const ctx = document.getElementById('historyChart').getContext('2d');
+        if (this.historyChartInstance) { this.historyChartInstance.destroy(); }
+        this.historyChartInstance = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: labels,
+            datasets: [{
+              label: 'Total Completed Items',
+              data: data,
+              backgroundColor: 'rgba(79, 70, 229, 0.6)',
+              borderColor: 'rgba(79, 70, 229, 1)',
+              borderWidth: 1,
+              borderRadius: 4
+            }]
+          },
+          options: {
+            responsive: true,
+            scales: {
+               y: { beginAtZero: true, grid: { color: '#1e293b' }, ticks: { color: '#94a3b8' } },
+               x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
+            },
+            plugins: { legend: { labels: { color: '#f1f5f9'} } }
+          }
+        });
+      },
+
+      // --- Timers Logic ---
+      tickTimers: function() {
+        const now = Date.now();
+        const diffMs = now - this.lastTickTime;
+        this.lastTickTime = now;
+        
+        // Only jump if diff makes sense (at least roughly 1 sec).
+        // If PC goes to sleep, this delta might be 15000 (15 seconds) or even 3600000 (1 hour).
+        // We round it to seconds delta to add accurate elapsed blocks.
+        const elapsedSecs = Math.round(diffMs / 1000);
+        
+        if (elapsedSecs > 0) {
+            if(this.state.caseTimerActive) { this.state.caseTimerSecs += elapsedSecs; }
+            if(this.state.breakTimerActive) { this.state.breakTimerSecs += elapsedSecs; }
+            if(this.state.tvTimerActive) { this.state.tvTimerSecs += elapsedSecs; }
+            
+            if (this.state.caseTimerActive || this.state.breakTimerActive || this.state.tvTimerActive) {
+               this.updateTimerUI();
+            }
+        }
+        
+        // Every roughly 30 seconds autosafe (trigger math off current state so we don't spam multiple times post-sleep)
+        if((this.state.caseTimerSecs + this.state.breakTimerSecs + this.state.tvTimerSecs) % 30 === 0 && elapsedSecs === 1 && (this.state.caseTimerActive || this.state.breakTimerActive || this.state.tvTimerActive)) {
+          this.saveData();
+        }
+      },
+      formatSeconds: function(s) {
+        const h = Math.floor(s / 3600).toString().padStart(2, '0');
+        const m = Math.floor((s % 3600) / 60).toString().padStart(2, '0');
+        const sec = (s % 60).toString().padStart(2, '0');
+        return `${h}:${m}:${sec}`;
+      },
+    updateTimerUI: function() {
+        document.getElementById('workTimerDisplay').innerText = this.formatSeconds(this.state.caseTimerSecs);
+        document.getElementById('breakTimerDisplay').innerText = this.formatSeconds(this.state.breakTimerSecs);
+        document.getElementById('tvTimerDisplay').innerText = this.formatSeconds(this.state.tvTimerSecs);
+        
+        // Compact Active Timer Link
+        const compactTitleEl = document.getElementById('compactActiveTimerTitle');
+        const compactDisplayEl = document.getElementById('compactActiveTimerClock');
+        // Unhide the dropdown specifically in compact-f mode via inline/classes if we need to
+        const smartTimerDropdown = document.getElementById('smartTimerDropdownContainer');
+        if (smartTimerDropdown) {
+           // We override the hide-in-compact specifically when looking at it. But let's just make it visible safely.
+           smartTimerDropdown.classList.replace('hide-in-compact', 'flex'); // Ensure it's not hidden
+        }
+
+        if (this.state.caseTimerActive) {
+          compactTitleEl.innerText = "Case Work";
+          compactTitleEl.className = "text-[9px] font-bold text-indigo-400 uppercase tracking-widest leading-none mb-1";
+          compactDisplayEl.innerText = this.formatSeconds(this.state.caseTimerSecs);
+        } else if (this.state.tvTimerActive) {
+          compactTitleEl.innerText = "Vertical Training";
+          compactTitleEl.className = "text-[9px] font-bold text-emerald-400 uppercase tracking-widest leading-none mb-1";
+          compactDisplayEl.innerText = this.formatSeconds(this.state.tvTimerSecs);
+        } else if (this.state.breakTimerActive) {
+          compactTitleEl.innerText = "Break";
+          compactTitleEl.className = "text-[9px] font-bold text-rose-400 uppercase tracking-widest leading-none mb-1";
+          compactDisplayEl.innerText = this.formatSeconds(this.state.breakTimerSecs);
+        } else {
+          compactTitleEl.innerText = "No Timer Active";
+          compactTitleEl.className = "text-[9px] font-bold text-slate-500 uppercase tracking-widest leading-none mb-1";
+          compactDisplayEl.innerText = "00:00:00";
+        }
+
+        // Compact H-Mode Individual Displays
+        const hWorkDisp = document.getElementById('compactHWorkDisplay');
+        const hTvDisp = document.getElementById('compactHTvDisplay');
+        const hBreakDisp = document.getElementById('compactHBreakDisplay');
+        
+        if (hWorkDisp) hWorkDisp.innerText = this.formatSeconds(this.state.caseTimerSecs);
+        if (hTvDisp) hTvDisp.innerText = this.formatSeconds(this.state.tvTimerSecs);
+        if (hBreakDisp) hBreakDisp.innerText = this.formatSeconds(this.state.breakTimerSecs);
+
+        // Compact V-Mode Individual Displays
+        const vWorkDisp = document.getElementById('compactVWorkDisplay');
+        const vTvDisp = document.getElementById('compactVTvDisplay');
+        const vBreakDisp = document.getElementById('compactVBreakDisplay');
+        
+        if (vWorkDisp) vWorkDisp.innerText = this.formatSeconds(this.state.caseTimerSecs);
+        if (vTvDisp) vTvDisp.innerText = this.formatSeconds(this.state.tvTimerSecs);
+        if (vBreakDisp) vBreakDisp.innerText = this.formatSeconds(this.state.breakTimerSecs);
+
+        // Compact H-Mode Button Sync
+        const hWorkBtn = document.getElementById('btnHWorkToggle');
+        if (hWorkBtn) hWorkBtn.innerHTML = this.state.caseTimerActive ? '⏸' : '▶';
+
+        const hTvBtn = document.getElementById('btnHTvToggle');
+        if (hTvBtn) hTvBtn.innerHTML = this.state.tvTimerActive ? '⏸' : '▶';
+
+        const hBreakBtn = document.getElementById('btnHBreakToggle');
+        if (hBreakBtn) hBreakBtn.innerHTML = this.state.breakTimerActive ? '⏸' : '▶';
+
+        // Compact V-Mode Button Sync
+        const vWorkBtn = document.getElementById('btnVWorkToggle');
+        if (vWorkBtn) vWorkBtn.innerHTML = this.state.caseTimerActive ? '⏸' : '▶';
+
+        const vTvBtn = document.getElementById('btnVTvToggle');
+        if (vTvBtn) vTvBtn.innerHTML = this.state.tvTimerActive ? '⏸' : '▶';
+
+        const vBreakBtn = document.getElementById('btnVBreakToggle');
+        if (vBreakBtn) vBreakBtn.innerHTML = this.state.breakTimerActive ? '⏸' : '▶';
+
+        this.updateTvSummaryUI();
+        this.calculatePace();
+      },
+      updateTvSummaryUI: function() {
+        const tvH = this.state.settings.tvGoalHours || 0;
+        const tvM = this.state.settings.tvGoalMinutes || 0;
+        const targetTvSecs = (tvH * 3600) + (tvM * 60);
+        
+        const totalTvSecsThisWeek = (this.state.pastTvSecsThisWeek || 0) + this.state.tvTimerSecs;
+        
+        const loggedTvH = Math.floor(totalTvSecsThisWeek / 3600);
+        const loggedTvMRem = Math.floor((totalTvSecsThisWeek % 3600) / 60);
+        const loggedTvSRem = totalTvSecsThisWeek % 60;
+        
+        const remainingSecs = Math.max(0, targetTvSecs - totalTvSecsThisWeek);
+        const remH = Math.floor(remainingSecs / 3600);
+        const remM = Math.floor((remainingSecs % 3600) / 60);
+        
+        let progressSpan = `<span class="text-sm font-normal text-slate-400 block mt-1">Goal left: ${remH}h ${remM}m</span>`;
+        if (remainingSecs === 0 && targetTvSecs > 0) {
+          progressSpan = `<span class="text-sm font-bold text-emerald-400 block mt-1">Goal Reached! 🎉</span>`;
+        }
+        
+        document.getElementById('summaryTvProgress').innerHTML = `${loggedTvH}h ${loggedTvMRem}m ${loggedTvSRem}s ${progressSpan}`;
+        
+        // Thursday Alert Logic (0=Sun, ..., 4=Thu, 5=Fri, 6=Sat)
+        const dayOfWeek = new Date().getDay();
+        const card = document.getElementById('tvSummaryCard');
+        const title = document.getElementById('tvSummaryTitle');
+        if (dayOfWeek >= 4 && totalTvSecsThisWeek < targetTvSecs) {
+          card.classList.replace('bg-slate-900', 'bg-rose-950');
+          card.classList.replace('border-slate-800', 'border-rose-900');
+          title.classList.replace('text-slate-500', 'text-rose-400');
+        } else {
+          card.classList.replace('bg-rose-950', 'bg-slate-900');
+          card.classList.replace('border-rose-900', 'border-slate-800');
+          title.classList.replace('text-rose-400', 'text-slate-500');
+        }
+      },
+      toggleWorkTimer: function() {
+        this.state.caseTimerActive = !this.state.caseTimerActive;
+        const btn = document.getElementById('btnWorkToggle');
+        btn.innerText = this.state.caseTimerActive ? 'PAUSE' : 'START';
+        if(this.state.caseTimerActive) {
+          if(this.state.breakTimerActive) this.toggleBreakTimer();
+          if(this.state.tvTimerActive) this.toggleTvTimer();
+        }
+      },
+      toggleBreakTimer: function() {
+        this.state.breakTimerActive = !this.state.breakTimerActive;
+        const btn = document.getElementById('btnBreakToggle');
+        btn.innerText = this.state.breakTimerActive ? 'PAUSE' : 'START';
+        if(this.state.breakTimerActive) {
+          if(this.state.caseTimerActive) this.toggleWorkTimer();
+          if(this.state.tvTimerActive) this.toggleTvTimer();
+        }
+      },
+      toggleTvTimer: function() {
+        this.state.tvTimerActive = !this.state.tvTimerActive;
+        const btn = document.getElementById('btnTvToggle');
+        btn.innerText = this.state.tvTimerActive ? 'PAUSE' : 'START';
+        if(this.state.tvTimerActive) {
+          if(this.state.caseTimerActive) this.toggleWorkTimer();
+          if(this.state.breakTimerActive) this.toggleBreakTimer();
+        }
+      },
+      handleTimerDropdown: function(val) {
+        if (val === 'work' && !this.state.caseTimerActive) this.toggleWorkTimer();
+        else if (val === 'tv' && !this.state.tvTimerActive) this.toggleTvTimer();
+        else if (val === 'break' && !this.state.breakTimerActive) this.toggleBreakTimer();
+        else if (val === 'stop') {
+           if (this.state.caseTimerActive) this.toggleWorkTimer();
+           if (this.state.tvTimerActive) this.toggleTvTimer();
+           if (this.state.breakTimerActive) this.toggleBreakTimer();
+        }
+        
+        // Reset dropdown gracefully so they aren't stuck on the option visually while it's active
+        const sel = document.getElementById('compactTimerSelect');
+        if (sel) sel.value = "";
+      },
+
+      // --- Alarm Logic ---
+      setAlarm: function() {
+        const type = document.getElementById('alarmType').value;
+        const val = document.getElementById('alarmInput').value;
+        if(!val) return;
+
+        if(this.alarmInterval) clearInterval(this.alarmInterval);
+        
+        let targetMs = 0;
+        if(type === 'countdown') {
+          targetMs = Date.now() + (parseFloat(val) * 60000);
+        } else {
+          // exact HH:MM
+          const parts = val.split(':');
+          if(parts.length !== 2) return alert("Formatting error. Use HH:MM");
+          const d = new Date();
+          d.setHours(parseInt(parts[0]), parseInt(parts[1]), 0);
+          if(d.getTime() < Date.now()) d.setDate(d.getDate() + 1); // next day
+          targetMs = d.getTime();
+        }
+
+        document.getElementById('alarmStatus').classList.remove('hidden');
+        document.getElementById('alarmStatus').innerText = "Alarm active for " + new Date(targetMs).toLocaleTimeString();
+
+        this.alarmInterval = setInterval(() => {
+          if(Date.now() >= targetMs) {
+            this.triggerAlarm();
+          }
+        }, 1000);
+      },
+      triggerAlarm: function() {
+        clearInterval(this.alarmInterval);
+        document.getElementById('alarmStatus').innerText = "Ringing...";
+        document.getElementById('modalAlarmTrigger').classList.remove('hidden');
+        this.playAudioSequence();
+      },
+      playAudioSequence: function() {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if(!AudioContext) return; // not supported
+        const ctx = new AudioContext();
+        
+        // Setup annoying beep loop
+        this.oscillator = ctx.createOscillator();
+        const gain = ctx.createGain();
+        this.oscillator.type = 'square';
+        this.oscillator.frequency.setValueAtTime(880, ctx.currentTime); 
+        this.oscillator.connect(gain);
+        gain.connect(ctx.destination);
+        
+        // Tremolo effect
+        gain.gain.setValueAtTime(0, ctx.currentTime);
+        for(let i=0; i<100; i++) {
+          gain.gain.setValueAtTime(0.5, ctx.currentTime + (i*0.5));
+          gain.gain.setValueAtTime(0, ctx.currentTime + (i*0.5) + 0.2);
+        }
+        this.oscillator.start();
+      },
+      stopAlarm: function() {
+        if(this.oscillator) try { this.oscillator.stop(); } catch(e){}
+        document.getElementById('modalAlarmTrigger').classList.add('hidden');
+        document.getElementById('alarmStatus').classList.add('hidden');
+      },
+      snoozeAlarm: function() {
+        this.stopAlarm();
+        const targetMs = Date.now() + (5 * 60000);
+        document.getElementById('alarmStatus').classList.remove('hidden');
+        document.getElementById('alarmStatus').innerText = "Snoozed until " + new Date(targetMs).toLocaleTimeString();
+        this.alarmInterval = setInterval(() => { if(Date.now() >= targetMs) this.triggerAlarm(); }, 1000);
+      },
+
+      // --- Sync to Sheet ---
+      syncToSheet: function(isBackground = false) {
+        let btn, originalText;
+        if (!isBackground) {
+          btn = document.getElementById('btnExport');
+          originalText = btn.innerText;
+          btn.innerText = "Syncing...";
+          btn.disabled = true;
+        }
+
+        const payload = JSON.stringify({
+          queues: this.state.queues,
+          tvTimerSecs: this.state.tvTimerSecs,
+          caseTimerSecs: this.state.caseTimerSecs,
+          breakTimerSecs: this.state.breakTimerSecs,
+          settings: this.state.settings,
+          detailedLogs: this.state.detailedLogs
+        });
+        
+        google.script.run
+          .withSuccessHandler((res) => {
+            if (!isBackground && btn) {
+              btn.disabled = false;
+              btn.innerText = "Synced!";
+              setTimeout(() => btn.innerText = originalText, 3000);
+            }
+            try {
+               const data = JSON.parse(res);
+               if(data.success && data.url) {
+                 console.log("Successfully synced or created Google Sheet at:", data.url);
+                 const btnOpen = document.getElementById('btnOpenSheet');
+                 if (btnOpen) {
+                   btnOpen.href = data.url;
+                   btnOpen.classList.remove('hidden');
+                 }
+                 
+                 // Clear detailed logs after successful sync
+                 this.state.detailedLogs = [];
+                 this.renderLogs();
+                 this.saveData();
+
+               } else {
+                 console.error("Sync Error:", data.error);
+                 if (!isBackground && btn) {
+                   btn.innerText = "Error (See Console)";
+                   setTimeout(() => btn.innerText = originalText, 3000);
+                 }
+               }
+            } catch(e){ console.error(e); }
+          })
+          .withFailureHandler((err) => {
+             console.error("GAS Execution Error:", err);
+             if (!isBackground && btn) {
+               btn.disabled = false;
+               btn.innerText = "Error";
+               setTimeout(() => btn.innerText = originalText, 3000);
+             }
+          })
+          .exportToGoogleSheet(payload);
+      }
+    };
+
+    // Boot
+    window.addEventListener('DOMContentLoaded', () => app.init());
+
+  </script>
+</body>
+</html>

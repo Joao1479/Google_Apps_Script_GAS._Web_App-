@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Advanced Daily Task Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: { extend: { colors: { primary: '#4f46e5' } } }
+        }
+    </script>
+    <?!= include('css'); ?>
+</head>
+
+<body class="bg-slate-950 text-slate-100 font-sans min-h-screen flex flex-col overflow-x-hidden">
+    <div class="flex flex-col flex-1 w-full max-w-[1400px] mx-auto">
+        <!-- Header -->
+        <header
+            class="h-16 border-b border-slate-800 bg-slate-900/50 backdrop-blur-md px-4 lg:px-6 flex items-center justify-between shrink-0">
+            <div class="flex items-center gap-3">
+                <div
+                    class="w-8 h-8 bg-indigo-600 rounded flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01">
+                        </path>
+                    </svg>
+                </div>
+                <h1
+                    class="text-lg font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">
+                    Daily Task Tracker</h1>
+            </div>
+            <div class="flex flex-wrap gap-2 items-center">
+                <button id="btnCompactV"
+                    class="px-2 py-1.5 bg-slate-800 border border-slate-700 text-slate-300 hover:text-white rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1 hide-in-compact"
+                    title="Mini (Vertical Flow)">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 6h16M4 12h16M4 18h16"></path>
+                    </svg>
+                    <span class="hidden sm:inline">Mini V</span>
+                </button>
+                <button id="btnCompactH"
+                    class="px-2 py-1.5 bg-slate-800 border border-slate-700 text-slate-300 hover:text-white rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1 hide-in-compact"
+                    title="Mini (Horizontal Bottom Bar)">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16">
+                        </path>
+                    </svg>
+                    <span class="hidden md:inline">Mini H</span>
+                </button>
+                <button id="btnCompactF"
+                    class="px-2 py-1.5 bg-slate-800 border border-slate-700 text-slate-300 hover:text-white rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1 hide-in-compact"
+                    title="Mini (Float / Box)">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <rect x="4" y="4" width="16" height="16" rx="2" stroke-width="2"></rect>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10h6m-6 4h6"></path>
+                    </svg>
+                    <span class="hidden md:inline">Mini Float</span>
+                </button>
+                <button id="btnNormalMode"
+                    class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold transition-colors shadow-lg shadow-indigo-600/20 show-in-compact"
+                    title="Exit Mini">
+                    Return Normal
+                </button>
+                <button id="btnTheme" class="hidden" title="Toggle Theme"></button>
+                <button id="btnSettings"
+                    class="px-3 py-1.5 bg-slate-800 border border-slate-700 text-slate-300 hover:text-white rounded-lg text-sm font-semibold transition-colors hide-in-compact">Settings</button>
+                <button id="btnManage"
+                    class="px-4 py-1.5 bg-indigo-600 rounded-lg text-sm font-semibold hover:bg-indigo-500 transition-colors shadow-lg shadow-indigo-600/20 hide-in-compact">Manage
+                    Queues</button>
+                <button id="btnResetCounts"
+                    class="px-3 py-1.5 bg-rose-600/20 border border-rose-500/40 text-rose-400 hover:text-rose-300 hover:bg-rose-600/30 rounded-lg text-sm font-semibold transition-colors hide-in-compact">Reset
+                    Counts</button>
+                <button id="btnHistory"
+                    class="px-3 py-1.5 bg-slate-800 border border-slate-700 text-slate-300 hover:text-white rounded-lg text-sm font-semibold transition-colors hide-in-compact">History</button>
+                <button id="btnExport"
+                    class="px-3 py-1.5 bg-slate-800 border border-slate-700 text-slate-300 hover:text-white rounded-lg text-sm font-semibold transition-colors hidden sm:block hide-in-compact">Sync
+                    to Sheet</button>
+                <a id="btnOpenSheet" target="_blank"
+                    class="px-3 py-1.5 bg-emerald-600/20 border border-emerald-500/40 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-600/30 rounded-lg text-sm font-semibold transition-colors shadow-[0_0_10px_rgba(16,185,129,0.1)] hidden">Open
+                    Sheet <span class="text-[10px] ml-1">↗</span></a>
+            </div>
+        </header>
+
+        <main class="flex-1 flex flex-col lg:flex-row gap-6 p-4 lg:p-6">
+            <!-- Left Panel -->
+            <div class="flex-1 flex flex-col gap-6 left-panel">
+                <!-- Summary Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 hide-in-compact">
+                    <div id="tvSummaryCard"
+                        class="bg-slate-900 border border-slate-800 p-4 rounded-xl shadow-xl relative overflow-hidden flex flex-col transition-colors duration-300">
+                        <div class="absolute top-0 right-0 p-2 opacity-10">
+                            <svg class="w-12 h-12" fill="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M13 10V3L4 14h7v7l9-11h-7z" fill="none" stroke="currentColor"></path>
+                            </svg>
+                        </div>
+                        <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1"
+                            id="tvSummaryTitle">Vertical Training (Week)</div>
+                        <span id="summaryTvProgress" class="text-3xl font-bold text-white mt-auto">0h 0m <span
+                                class="text-sm font-normal text-slate-400">/ 0h 0m</span></span>
+                    </div>
+                    <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl shadow-xl flex flex-col">
+                        <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Overall Progress
+                        </div>
+                        <span id="summaryProgress" class="text-3xl font-bold text-teal-400 mt-auto">0%</span>
+                    </div>
+                    <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl shadow-xl flex flex-col">
+                        <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Pace Status
+                        </div>
+                        <div class="mt-auto flex items-center">
+                            <span id="summaryPace" class="text-xl font-bold text-slate-400">Waiting</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Queues Table (Main Card) -->
+                <div id="queuesCard"
+                    class="bg-slate-900 border-2 border-slate-800 rounded-xl overflow-hidden flex flex-col shadow-2xl transition-colors duration-300">
+                    <div
+                        class="px-4 py-3 border-b border-slate-800 flex flex-col gap-3 md:flex-row md:justify-between md:items-center bg-slate-950/30 overflow-hidden relative">
+                        <!-- Spacer for H-Mode centering -->
+                        <div class="hidden h-mode-timers flex-1"></div>
+
+                        <!-- Smart Timer (Shows in compact-f) -->
+                        <div class="show-in-compact smart-timer-container flex-col items-center gap-2 w-full md:w-auto shrink-0 md:flex-1 md:items-start"
+                            style="display: none /* overriden by css */">
+                            <div class="flex flex-col items-center justify-center w-full md:items-start">
+                                <div id="compactActiveTimerTitle"
+                                    class="text-[9px] font-bold text-slate-500 uppercase tracking-widest leading-none mb-1">
+                                    No Timer Active</div>
+                                <div id="compactActiveTimerClock"
+                                    class="text-2xl font-mono text-slate-100 font-bold tracking-tight leading-none">
+                                    00:00:00</div>
+                            </div>
+                            <div class="relative w-full max-w-[200px] mt-1 hide-in-compact"
+                                id="smartTimerDropdownContainer">
+                                <select id="compactTimerSelect"
+                                    class="w-full appearance-none bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded text-[10px] font-bold text-white shadow px-3 py-1.5 outline-none cursor-pointer pr-8 text-center transition-colors"
+                                    onchange="app.handleTimerDropdown(this.value)">
+                                    <option value="" disabled selected>TIMERS ▾</option>
+                                    <option value="work">▶ Case Work</option>
+                                    <option value="tv">▶ Vert. Train</option>
+                                    <option value="break">▶ Break</option>
+                                    <option value="stop">⏹ Stop All</option>
+                                </select>
+                                <div
+                                    class="pointer-events-none absolute inset-y-0 right-2 flex items-center text-slate-400">
+                                    <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M19 9l-7 7-7-7"></path>
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- V-Mode Timers (Shows ONLY in compact-v stacked vertically) -->
+                        <div class="hidden v-mode-timers flex-col gap-3 w-full border-b border-slate-700/50 pb-4 mb-2">
+                            <!-- Mini Case Work -->
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-3">
+                                    <button id="btnVWorkToggle"
+                                        class="w-8 h-8 rounded-lg flex justify-center items-center font-bold bg-indigo-600/20 text-indigo-400 hover:bg-indigo-600/40 border border-indigo-500/30 transition-colors">▶</button>
+                                    <span class="text-xs font-bold uppercase text-slate-400">Case Work</span>
+                                </div>
+                                <span id="compactVWorkDisplay"
+                                    class="font-mono text-lg font-bold text-slate-100">00:00:00</span>
+                            </div>
+                            <!-- Mini VT -->
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-3">
+                                    <button id="btnVTvToggle"
+                                        class="w-8 h-8 rounded-lg flex justify-center items-center font-bold bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/40 border border-emerald-500/30 transition-colors">▶</button>
+                                    <span class="text-xs font-bold uppercase text-slate-400">Vert. Train</span>
+                                </div>
+                                <span id="compactVTvDisplay"
+                                    class="font-mono text-lg font-bold text-slate-100">00:00:00</span>
+                            </div>
+                            <!-- Mini Break -->
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-3">
+                                    <button id="btnVBreakToggle"
+                                        class="w-8 h-8 rounded-lg flex justify-center items-center font-bold bg-rose-600/20 text-rose-400 hover:bg-rose-600/40 border border-rose-500/30 transition-colors">▶</button>
+                                    <span class="text-xs font-bold uppercase text-slate-400">Break</span>
+                                </div>
+                                <span id="compactVBreakDisplay"
+                                    class="font-mono text-lg font-bold text-slate-100">00:00:00</span>
+                            </div>
+                            <!-- Pace -->
+                            <div class="flex items-center justify-between pt-3 border-t border-slate-800/50 mt-1">
+                                <span class="text-xs font-bold uppercase text-slate-500">Pace</span>
+                                <span id="compactVPace" class="text-sm font-bold text-slate-400">Waiting</span>
+                            </div>
+                        </div>
+
+                        <!-- H-Mode Timers (Shows ONLY in compact-h side by side) -->
+                        <div class="hidden h-mode-timers flex-row items-center justify-center gap-4 overflow-x-auto whitespace-nowrap scrollbar-hide shrink-0"
+                            style="scrollbar-width: none;">
+                            <!-- Mini Case Work -->
+                            <div class="flex items-center gap-2">
+                                <button id="btnHWorkToggle"
+                                    class="w-8 h-8 rounded-lg flex justify-center items-center font-bold bg-indigo-600/20 text-indigo-400 hover:bg-indigo-600/40 border border-indigo-500/30 transition-colors">▶</button>
+                                <div class="flex flex-col">
+                                    <span class="text-[9px] font-bold uppercase text-slate-500 leading-none">Case
+                                        Work</span>
+                                    <span id="compactHWorkDisplay"
+                                        class="font-mono text-[15px] font-bold text-slate-200 leading-none mt-1">00:00:00</span>
+                                </div>
+                            </div>
+                            <!-- Mini VT -->
+                            <div class="flex items-center gap-2 border-l border-slate-700/50 pl-4">
+                                <button id="btnHTvToggle"
+                                    class="w-8 h-8 rounded-lg flex justify-center items-center font-bold bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/40 border border-emerald-500/30 transition-colors">▶</button>
+                                <div class="flex flex-col">
+                                    <span class="text-[9px] font-bold uppercase text-slate-500 leading-none">Vert.
+                                        Train</span>
+                                    <span id="compactHTvDisplay"
+                                        class="font-mono text-[15px] font-bold text-slate-200 leading-none mt-1">00:00:00</span>
+                                </div>
+                            </div>
+                            <!-- Mini Break -->
+                            <div class="flex items-center gap-2 border-l border-slate-700/50 pl-4">
+                                <button id="btnHBreakToggle"
+                                    class="w-8 h-8 rounded-lg flex justify-center items-center font-bold bg-rose-600/20 text-rose-400 hover:bg-rose-600/40 border border-rose-500/30 transition-colors">▶</button>
+                                <div class="flex flex-col">
+                                    <span
+                                        class="text-[9px] font-bold uppercase text-slate-500 leading-none">Break</span>
+                                    <span id="compactHBreakDisplay"
+                                        class="font-mono text-[15px] font-bold text-slate-200 leading-none mt-1">00:00:00</span>
+                                </div>
+                            </div>
+                            <!-- Pace -->
+                            <div class="flex flex-col border-l border-slate-700/50 pl-4 justify-center">
+                                <span class="text-[9px] font-bold uppercase text-slate-500 leading-none">Pace</span>
+                                <span id="compactHPace"
+                                    class="text-sm font-bold text-slate-400 leading-none mt-1">Waiting</span>
+                            </div>
+                        </div>
+
+                        <!-- Queues Info (Right side) -->
+                        <div
+                            class="flex items-center gap-3 justify-center md:justify-end w-full md:w-auto mt-2 md:mt-0 shrink-0 md:flex-1">
+                            <div class="font-bold text-slate-300 text-sm">Queues (<span id="compactOverallProgress"
+                                    class="text-indigo-400">0%</span>)</div>
+                            <button id="btnOpenLogModal"
+                                class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-[10px] font-bold uppercase transition-colors show-in-compact">Add
+                                Log</button>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto overflow-y-hidden">
+                        <table class="w-full text-left border-collapse">
+                            <thead
+                                class="bg-slate-950/50 text-[11px] uppercase tracking-widest text-slate-500 font-bold">
+                                <tr>
+                                    <th class="px-4 py-4">Queue Name</th>
+                                    <th class="px-4 py-4 hide-in-compact">AHT Goal</th>
+                                    <th class="px-4 py-4 hide-in-compact">Goal</th>
+                                    <th class="px-4 py-4 min-w-[120px]">Count</th>
+                                    <th class="px-4 py-4 min-w-[160px] hide-in-compact">Progress</th>
+                                </tr>
+                            </thead>
+                            <tbody id="queuesTableBody" class="divide-y divide-slate-800 text-sm">
+                                <!-- Rendered via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Detailed Log Section -->
+                <div
+                    class="bg-slate-900 border border-slate-800 rounded-xl shadow-2xl overflow-hidden flex flex-col hide-in-compact">
+                    <div class="bg-slate-950/50 p-4 border-b border-slate-800 flex flex-wrap gap-3 items-center">
+                        <input type="text" id="logId" placeholder="ID"
+                            class="w-32 bg-slate-900 border border-slate-800 text-slate-200 rounded p-2 focus:outline-none focus:border-indigo-500 text-sm">
+                        <select id="logQueue"
+                            class="w-48 bg-slate-900 border border-slate-800 text-slate-200 rounded p-2 focus:outline-none focus:border-indigo-500 text-sm">
+                            <!-- populated dynamically -->
+                        </select>
+                        <input type="text" id="logComment" placeholder="Comment"
+                            class="flex-1 bg-slate-900 border border-slate-800 text-slate-200 rounded p-2 focus:outline-none focus:border-indigo-500 text-sm min-w-[200px]">
+                        <button id="btnAddLog"
+                            class="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded font-bold transition-colors text-xs whitespace-nowrap">ADD
+                            LOG</button>
+                    </div>
+                    <div class="overflow-x-auto max-h-48 overflow-y-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead
+                                class="bg-slate-950/50 text-[10px] uppercase tracking-widest text-slate-500 font-bold sticky top-0">
+                                <tr>
+                                    <th class="py-2 px-4 whitespace-nowrap">Time</th>
+                                    <th class="py-2 px-4">ID</th>
+                                    <th class="py-2 px-4">Queue</th>
+                                    <th class="py-2 px-4 w-full">Comment</th>
+                                    <th class="py-2 px-4"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="logsTableBody" class="divide-y divide-slate-800 text-xs">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div> <!-- End Left Panel -->
+            <!-- Right Panel: Timers & Modules -->
+            <div id="rightPanelWrap" class="right-panel w-full lg:w-64 flex flex-col gap-4">
+                <!-- Timers Container (Moves to modal in compact) -->
+                <div id="timersContainer" class="flex flex-col gap-4">
+                    <!-- Case Work Tracker -->
+                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-2xl flex flex-col">
+                        <h3
+                            class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 flex justify-between items-center">
+                            Case Work <button class="opacity-60 hover:opacity-100 transition-opacity"
+                                onclick="app.openEditTimer('caseTimerSecs', 'Case Work')" title="Edit Timer"><svg
+                                    class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z">
+                                    </path>
+                                </svg></button></h3>
+                        <div id="workTimerDisplay"
+                            class="text-3xl font-mono text-indigo-400 tracking-tight text-center mb-4">00:00:00</div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button id="btnWorkToggle"
+                                class="py-1.5 bg-indigo-600/20 border border-indigo-500/40 text-indigo-300 rounded-lg text-xs font-bold transition-colors shadow-[0_0_10px_rgba(79,70,229,0.1)] hover:bg-indigo-600/30">START</button>
+                            <button id="btnWorkReset"
+                                class="py-1.5 bg-slate-800 border border-slate-700 text-slate-400 rounded-lg text-xs font-bold transition-colors hover:text-white">RESET</button>
+                        </div>
+                    </div>
+                    <!-- Treino Vertical Tracker -->
+                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-2xl flex flex-col">
+                        <h3
+                            class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 flex justify-between items-center">
+                            Vertical Training <button class="opacity-60 hover:opacity-100 transition-opacity"
+                                onclick="app.openEditTimer('tvTimerSecs', 'Vertical Training')" title="Edit Timer"><svg
+                                    class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z">
+                                    </path>
+                                </svg></button></h3>
+                        <div id="tvTimerDisplay"
+                            class="text-3xl font-mono text-emerald-400 tracking-tight text-center mb-4">00:00:00</div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button id="btnTvToggle"
+                                class="py-1.5 bg-emerald-600/20 border border-emerald-500/40 text-emerald-300 rounded-lg text-xs font-bold transition-colors shadow-[0_0_10px_rgba(16,185,129,0.1)] hover:bg-emerald-600/30">START</button>
+                            <button id="btnTvReset"
+                                class="py-1.5 bg-slate-800 border border-slate-700 text-slate-400 rounded-lg text-xs font-bold transition-colors hover:text-white">RESET</button>
+                        </div>
+                    </div>
+                    <!-- Break Tracker -->
+                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-2xl flex flex-col">
+                        <h3
+                            class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 flex justify-between items-center">
+                            Break <button class="opacity-60 hover:opacity-100 transition-opacity"
+                                onclick="app.openEditTimer('breakTimerSecs', 'Break')" title="Edit Timer"><svg
+                                    class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z">
+                                    </path>
+                                </svg></button></h3>
+                        <div id="breakTimerDisplay"
+                            class="text-3xl font-mono text-rose-400 tracking-tight text-center mb-4">00:00:00</div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button id="btnBreakToggle"
+                                class="py-1.5 bg-rose-600/20 border border-rose-500/40 text-rose-300 rounded-lg text-xs font-bold transition-colors shadow-[0_0_10px_rgba(225,29,72,0.1)] hover:bg-rose-600/30">START</button>
+                            <button id="btnBreakReset"
+                                class="py-1.5 bg-slate-800 border border-slate-700 text-slate-400 rounded-lg text-xs font-bold transition-colors hover:text-white">RESET</button>
+                        </div>
+                    </div>
+
+                    <!-- Alarm / Timer -->
+                    <div
+                        class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-2xl flex flex-col hide-in-compact">
+                        <h3
+                            class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 flex items-center justify-between">
+                            Alarm Control
+                            <span id="alarmStatus"
+                                class="bg-teal-500/10 text-teal-400 px-1.5 py-0.5 rounded text-[9px] hidden">Ready</span>
+                        </h3>
+                        <div class="flex flex-col gap-2 mb-4">
+                            <select id="alarmType"
+                                class="w-full text-xs bg-slate-950 border border-slate-800 text-slate-200 rounded p-1.5 focus:outline-none focus:border-indigo-500">
+                                <option value="countdown">Countdown (Mins)</option>
+                                <option value="exact">Exact (HH:MM)</option>
+                            </select>
+                            <input type="text" id="alarmInput" placeholder="e.g. 15 or 14:30"
+                                class="w-full text-center text-base font-mono bg-slate-950 border border-slate-800 text-indigo-400 rounded p-1.5 focus:outline-none focus:border-indigo-500">
+                        </div>
+                        <button id="btnAlarmSet"
+                            class="w-full py-1.5 bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg text-[10px] font-bold transition-colors text-xs">SET
+                            ALARM</button>
+                    </div>
+                </div> <!-- End timers container -->
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal: Timers (For Compact Mode) -->
+    <div id="modalTimers"
+        class="fixed inset-0 bg-slate-950/90 backdrop-blur-md flex items-center justify-center hidden z-[60]">
+        <div class="bg-slate-900 border border-slate-800 p-6 rounded-xl shadow-2xl w-full max-w-sm flex flex-col">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold text-white">Timers Control</h2>
+                <button class="text-slate-400 hover:text-white btn-close-modal">✕</button>
+            </div>
+            <div id="modalTimersContent" class="flex flex-col gap-4">
+                <!-- Timers get injected here when compact -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Add Log (For Compact Mode) -->
+    <div id="modalLog"
+        class="fixed inset-0 bg-slate-950/90 backdrop-blur-md flex flex-col items-center justify-center hidden z-[60] p-4">
+        <div class="bg-slate-900 border border-slate-800 p-6 rounded-xl shadow-2xl w-full max-w-sm flex flex-col gap-4">
+            <h2 class="text-xl font-bold text-white flex justify-between">Add Detailed Log <button
+                    class="text-slate-400 hover:text-white btn-close-modal text-sm">✕</button></h2>
+            <input type="text" id="logIdMobile" placeholder="ID (Case/Ticket)"
+                class="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded p-2 focus:outline-none focus:border-indigo-500 text-sm">
+            <select id="logQueueMobile"
+                class="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded p-2 focus:outline-none focus:border-indigo-500 text-sm"></select>
+            <input type="text" id="logCommentMobile" placeholder="Comment/Reason"
+                class="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded p-2 focus:outline-none focus:border-indigo-500 text-sm">
+            <button id="btnAddLogMobile"
+                class="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded font-bold transition-colors text-sm">Save
+                Log</button>
+        </div>
+    </div>
+
+    <!-- Manage Queues Modal -->
+    <div id="modalManage"
+        class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center hidden z-50">
+        <div
+            class="bg-slate-900 border border-slate-800 p-6 rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <h2 class="text-xl font-bold text-white mb-4">Manage Queues</h2>
+            <div class="flex gap-2 text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 px-2">
+                <span class="flex-1">Queue Name</span>
+                <span class="w-20 text-center">Goal</span>
+                <span class="w-10"></span>
+            </div>
+            <div id="manageQueuesList" class="space-y-3 mb-6"></div>
+            <button id="btnAddQueue"
+                class="w-full py-3 border border-dashed border-slate-700 text-slate-500 hover:text-slate-300 hover:border-slate-500 transition-colors rounded-lg text-sm font-bold mb-6">+
+                Add Queue</button>
+            <div class="flex justify-end gap-3">
+                <button
+                    class="btn-close-modal px-4 py-2 bg-slate-800 border border-slate-700 text-slate-300 hover:text-white transition-colors rounded-lg text-sm font-semibold">Cancel</button>
+                <button id="btnSaveQueues"
+                    class="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-semibold shadow-lg shadow-indigo-600/20 transition-colors">Save
+                    Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="modalSettings"
+        class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center hidden z-50">
+        <div class="bg-slate-900 border border-slate-800 p-6 rounded-xl shadow-2xl w-full max-w-sm">
+            <h2 class="text-xl font-bold text-white mb-4">Settings</h2>
+            <div class="mb-4">
+                <label class="block mb-2 text-xs font-bold text-slate-500 uppercase tracking-widest">Case Work
+                    (Hours)</label>
+                <input type="number" id="inputCaseWork" value="7.5" step="0.5"
+                    class="w-full p-2 bg-slate-950 border border-slate-700 text-indigo-400 rounded font-bold focus:outline-none focus:border-indigo-500">
+            </div>
+            <div class="mb-4">
+                <label class="block mb-2 text-xs font-bold text-slate-500 uppercase tracking-widest">Break Time
+                    (Hours)</label>
+                <input type="number" id="inputBreakTime" value="1.0" step="0.5"
+                    class="w-full p-2 bg-slate-950 border border-slate-700 text-rose-400 rounded font-bold focus:outline-none focus:border-rose-500">
+            </div>
+
+            <div class="mb-4">
+                <label class="block mb-2 text-xs font-bold text-slate-500 uppercase tracking-widest">Custom Background
+                    URL</label>
+                <input type="text" id="inputBackgroundUrl" placeholder="https://..."
+                    class="w-full p-2 bg-slate-950 border border-slate-700 text-slate-300 rounded font-mono text-sm focus:outline-none focus:border-indigo-500">
+            </div>
+
+            <div class="mb-6 border-t border-slate-800 pt-4">
+                <label class="block mb-3 text-xs font-bold text-slate-500 uppercase tracking-widest">Weekly VT Goal
+                    (SUN-SAT)</label>
+                <div class="flex gap-2">
+                    <div class="flex-1">
+                        <label class="block mb-1 text-[10px] uppercase text-slate-500">HOURS</label>
+                        <input type="number" id="inputTvHours" value="2" min="0"
+                            class="w-full p-2 bg-slate-950 border border-slate-700 text-emerald-400 rounded font-bold focus:outline-none focus:border-emerald-500">
+                    </div>
+                    <div class="flex-1">
+                        <label class="block mb-1 text-[10px] uppercase text-slate-500">MINUTES</label>
+                        <input type="number" id="inputTvMinutes" value="0" min="0" max="59"
+                            class="w-full p-2 bg-slate-950 border border-slate-700 text-emerald-400 rounded font-bold focus:outline-none focus:border-emerald-500">
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-3">
+                <button
+                    class="btn-close-modal px-4 py-2 bg-slate-800 border border-slate-700 text-slate-300 hover:text-white transition-colors rounded-lg text-sm font-semibold">Cancel</button>
+                <button id="btnSaveSettings"
+                    class="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-semibold shadow-lg shadow-indigo-600/20 transition-colors">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- History Modal -->
+    <div id="modalHistory"
+        class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center hidden z-50">
+        <div class="bg-slate-900 border border-slate-800 p-6 rounded-xl shadow-2xl w-full max-w-2xl">
+            <h2 class="text-xl font-bold text-white mb-4">7-Day Productivity History</h2>
+            <canvas id="historyChart" width="400" height="200"></canvas>
+            <div class="flex justify-end mt-6">
+                <button
+                    class="btn-close-modal px-4 py-2 bg-slate-800 border border-slate-700 text-slate-300 hover:text-white transition-colors rounded-lg text-sm font-semibold">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alarm Triggered Modal -->
+    <div id="modalAlarmTrigger"
+        class="fixed inset-0 bg-slate-950/90 backdrop-blur-md flex items-center justify-center hidden z-[100]">
+        <div class="bg-slate-900 border border-slate-800 p-8 rounded-xl shadow-2xl flex flex-col items-center">
+            <h2 class="text-4xl font-bold text-rose-500 animate-pulse mb-8 tracking-tight">⏰ Time's Up!</h2>
+            <div class="flex gap-4">
+                <button id="btnSnooze"
+                    class="px-6 py-3 bg-slate-800 border border-slate-700 text-slate-300 hover:text-white transition-colors rounded-lg text-sm font-semibold shadow-lg shadow-slate-900">Snooze
+                    (5m)</button>
+                <button id="btnStopAlarm"
+                    class="px-6 py-3 bg-rose-600/20 border border-rose-500/40 text-rose-400 hover:bg-rose-600/30 transition-colors rounded-lg text-sm font-bold shadow-[0_0_15px_rgba(225,29,72,0.2)]">Stop
+                    Alarm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Timer Modal -->
+    <div id="modalEditTimer"
+        class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center hidden z-50">
+        <div class="bg-slate-900 border border-slate-800 p-6 rounded-xl shadow-2xl w-full max-w-xs">
+            <h2 class="text-xl font-bold text-white mb-4" id="editTimerTitle">Edit Timer</h2>
+            <input type="hidden" id="editTimerTarget" value="">
+            <div class="flex gap-4 mb-6 justify-center">
+                <div class="flex flex-col items-center">
+                    <label class="text-[10px] text-slate-500 uppercase font-bold mb-1">HH</label>
+                    <input type="number" id="editTimerH" min="0" max="23"
+                        class="w-14 bg-slate-950 border border-slate-700 text-slate-200 text-center text-lg rounded-lg outline-none focus:border-indigo-500 py-1"
+                        value="0">
+                </div>
+                <div class="flex flex-col items-center text-slate-500 justify-end pb-2">:</div>
+                <div class="flex flex-col items-center">
+                    <label class="text-[10px] text-slate-500 uppercase font-bold mb-1">MM</label>
+                    <input type="number" id="editTimerM" min="0" max="59"
+                        class="w-14 bg-slate-950 border border-slate-700 text-slate-200 text-center text-lg rounded-lg outline-none focus:border-indigo-500 py-1"
+                        value="0">
+                </div>
+                <div class="flex flex-col items-center text-slate-500 justify-end pb-2">:</div>
+                <div class="flex flex-col items-center">
+                    <label class="text-[10px] text-slate-500 uppercase font-bold mb-1">SS</label>
+                    <input type="number" id="editTimerS" min="0" max="59"
+                        class="w-14 bg-slate-950 border border-slate-700 text-slate-200 text-center text-lg rounded-lg outline-none focus:border-indigo-500 py-1"
+                        value="0">
+                </div>
+            </div>
+            <div class="flex gap-2 text-[10px] justify-center mb-4 text-emerald-500 bg-emerald-500/10 py-1 px-2 rounded hidden"
+                id="editTimerFeedback">Saved seamlessly!</div>
+            <div class="flex justify-between gap-3">
+                <button
+                    class="btn-close-modal px-4 py-2 bg-slate-800 border border-slate-700 text-slate-300 hover:text-white transition-colors rounded-lg text-sm font-semibold">Cancel</button>
+                <button id="btnSaveTimer"
+                    class="flex-1 py-2 bg-indigo-600 rounded-lg text-white hover:bg-indigo-500 transition-colors text-sm font-semibold">Save
+                    New Time</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main JavaScript App -->
+    <?!= include('js'); ?>
+</body>
+
+</html>

@@ -1,0 +1,381 @@
+<script>
+/**
+* --- MOCK GAS google.script.run FOR LOCAL PREVIEW ---
+* In local dev out of GAS context, we fake the delayed network calls to test UI.
+*/
+if (typeof window.google === 'undefined') {
+console.info("Initializing fallback mocked google.script environment for local preview.");
+window.google = { script: { run: {
+withSuccessHandler: function(cb) { return {
+withFailureHandler: function(errCb) { return {
+getConsolidatedData: function() {
+setTimeout(() => {
+const mockData = {
+taskLogs: [
+{agent: "Joao Rodrigues", date: "2026-04-26", queue: "Support Tickets", goal: 20, count: 22, progress: "110%", ahtGoal: 300},
+{agent: "Maria Silva", date: "2026-04-26", queue: "Support Tickets", goal: 20, count: 18, progress: "90%", ahtGoal: 300}
+],
+verticalTraining: [
+{agent: "Joao Rodrigues", date: "2026-04-26", weekStarting: "2026-04-26", timeLogged: "0:01:22", weeklyGoal: "1:00:00"}
+],
+individualRecords: [
+{agent: "Joao Rodrigues", date: "2026-04-26", dateTime: "2026-04-26 10:00:00", id: "123", queue: "Support Tickets", comment: "Test"}
+],
+overallProgress: [
+{agent: "Joao Rodrigues", date: "2026-04-26", lastSyncTime: "15:26:48", totalGoal: 870, totalCount: 101, progress: "76.57%", caseWorkTime: "05:40:45", verticalTrainingTime: "00:00:00", breakTime: "00:38:45", dailyAHT: "00:03:22"}
+]
+};
+cb(JSON.stringify({success: true, data: mockData, agents: ["Joao Rodrigues", "Maria Silva"]}));
+}, 1000);
+},
+exportConsolidatedSheet: function(payload) {
+setTimeout(() => {
+cb(JSON.stringify({success: true, url: "https://docs.google.com/spreadsheets/d/mockId_team_dashboard"}));
+}, 1500);
+}
+}}
+}}
+}}};
+}
+
+const app = {
+allData: { taskLogs: [], verticalTraining: [], individualRecords: [], overallProgress: [] },
+filteredData: { taskLogs: [], verticalTraining: [], individualRecords: [], overallProgress: [] },
+activeTab: 'taskLogs',
+chartInstance: null,
+
+init: function() {
+this.bindEvents();
+},
+
+bindEvents: function() {
+document.getElementById('btnFetch').addEventListener('click', () => this.fetchData());
+document.getElementById('btnApplyFilters').addEventListener('click', () => this.applyFilters());
+document.getElementById('btnExportSheet').addEventListener('click', () => this.exportData());
+document.querySelectorAll('.tab-btn').forEach(btn => {
+btn.addEventListener('click', (e) => this.switchTab(e.target.dataset.tab));
+});
+},
+
+switchTab: function(tabId) {
+this.activeTab = tabId;
+document.querySelectorAll('.tab-btn').forEach(btn => {
+if(btn.dataset.tab === tabId) {
+btn.classList.add('bg-indigo-600', 'text-white', 'shadow');
+btn.classList.remove('text-slate-400', 'hover:text-slate-200');
+} else {
+btn.classList.remove('bg-indigo-600', 'text-white', 'shadow');
+btn.classList.add('text-slate-400', 'hover:text-slate-200');
+}
+});
+
+document.querySelectorAll('.tab-content').forEach(el => {
+if (el.id === 'view-' + tabId) {
+el.classList.remove('hidden');
+el.classList.add('flex');
+} else {
+el.classList.add('hidden');
+el.classList.remove('flex');
+}
+});
+},
+
+showLoading: function(text) {
+document.getElementById('loadingText').innerText = text;
+document.getElementById('loadingOverlay').classList.remove('hidden');
+document.getElementById('loadingOverlay').classList.add('flex');
+},
+
+hideLoading: function() {
+document.getElementById('loadingOverlay').classList.add('hidden');
+document.getElementById('loadingOverlay').classList.remove('flex');
+},
+
+fetchData: function() {
+this.showLoading("Searching Drive for Agent Trackers...");
+google.script.run
+.withSuccessHandler((responseStr) => {
+this.hideLoading();
+try {
+const res = JSON.parse(responseStr);
+if(res.success) {
+this.allData = res.data || { taskLogs: [], verticalTraining: [], individualRecords: [], overallProgress: [] };
+this.populateSelects(res.agents || [], this.allData.taskLogs);
+this.filteredData = {
+taskLogs: [...(this.allData.taskLogs || [])],
+verticalTraining: [...(this.allData.verticalTraining || [])],
+individualRecords: [...(this.allData.individualRecords || [])],
+overallProgress: [...(this.allData.overallProgress || [])]
+};
+const btnExport = document.getElementById('btnExportSheet');
+btnExport.disabled = false;
+btnExport.classList.remove('hidden');
+this.renderDashboard();
+} else {
+alert("Error fetching data: " + res.error);
+}
+} catch(e) {
+alert("Failed parsing response.", e);
+}
+})
+.withFailureHandler((err) => {
+this.hideLoading();
+alert("Execution error: " + err);
+})
+.getConsolidatedData();
+},
+
+populateSelects: function(agents, tasks) {
+// Agents
+const agentSel = document.getElementById('filterAgent');
+const currAgent = agentSel.value;
+agentSel.innerHTML = '<option value="">All Agents</option>';
+agents.sort().forEach(a => {
+agentSel.innerHTML += `<option value="${a}">${a}</option>`;
+});
+if(currAgent) agentSel.value = currAgent;
+
+// Queues
+const queueSel = document.getElementById('filterQueue');
+const currQueue = queueSel.value;
+queueSel.innerHTML = '<option value="">All Queues</option>';
+const uniqueQueues = [...new Set(tasks.map(t => t.queue))];
+uniqueQueues.sort().forEach(q => {
+queueSel.innerHTML += `<option value="${q}">${q}</option>`;
+});
+if(currQueue) queueSel.value = currQueue;
+},
+
+applyFilters: function() {
+const sDate = document.getElementById('filterStartDate').value;
+const eDate = document.getElementById('filterEndDate').value;
+const agent = document.getElementById('filterAgent').value;
+const queue = document.getElementById('filterQueue').value;
+
+const filterArr = (arr) => arr.filter(t => {
+if (sDate && t.date < sDate) return false;
+if (eDate && t.date > eDate) return false;
+if (agent && t.agent !== agent) return false;
+if (queue && t.queue !== undefined && t.queue !== queue) return false;
+return true;
+});
+
+this.filteredData = {
+taskLogs: filterArr(this.allData.taskLogs || []),
+verticalTraining: filterArr(this.allData.verticalTraining || []),
+individualRecords: filterArr(this.allData.individualRecords || []),
+overallProgress: filterArr(this.allData.overallProgress || [])
+};
+
+this.renderDashboard();
+},
+
+renderDashboard: function() {
+this.renderTable();
+this.renderVTTable();
+this.renderRITable();
+this.renderOPTable();
+this.renderStats();
+this.renderChart();
+},
+
+renderTable: function() {
+const tbody = document.getElementById('dataTableBody');
+tbody.innerHTML = '';
+const list = this.filteredData.taskLogs;
+
+if (list.length === 0) {
+tbody.innerHTML = `<tr><td colspan="7" class="px-4 py-8 text-center text-slate-500 italic">No records match the current filters.</td></tr>`;
+} else {
+list.forEach(row => {
+let progNum = parseFloat(row.progress) || 0;
+let progColor = 'text-slate-300';
+if (progNum >= 100) progColor = 'text-emerald-400 font-bold';
+else if (progNum >= 50) progColor = 'text-amber-400';
+else if (progNum > 0) progColor = 'text-rose-400';
+
+tbody.innerHTML += `
+<tr class="hover:bg-slate-800/20">
+<td class="px-4 py-2 font-mono text-slate-400">${row.date}</td>
+<td class="px-4 py-2 font-medium text-slate-200">${row.agent}</td>
+<td class="px-4 py-2 text-indigo-300">${row.queue}</td>
+<td class="px-4 py-2 text-slate-400">${row.goal}</td>
+<td class="px-4 py-2 font-bold text-white">${row.count}</td>
+<td class="px-4 py-2 ${progColor}">${row.progress}</td>
+<td class="px-4 py-2 text-slate-500">${row.ahtGoal}s</td>
+</tr>
+`;
+});
+}
+document.getElementById('tableRecordsCount').innerText = `${list.length} records matching filters`;
+},
+
+renderVTTable: function() {
+const tbody = document.getElementById('vtTableBody');
+tbody.innerHTML = '';
+const list = this.filteredData.verticalTraining;
+
+if (list.length === 0) {
+tbody.innerHTML = `<tr><td colspan="5" class="px-4 py-8 text-center text-slate-500 italic">No data.</td></tr>`;
+} else {
+list.forEach(row => {
+tbody.innerHTML += `
+<tr class="hover:bg-slate-800/20">
+<td class="px-4 py-2 font-mono text-slate-400">${row.date}</td>
+<td class="px-4 py-2 font-medium text-slate-200">${row.agent}</td>
+<td class="px-4 py-2 text-slate-300">${row.weekStarting}</td>
+<td class="px-4 py-2 text-emerald-400">${row.timeLogged}</td>
+<td class="px-4 py-2 text-slate-400">${row.weeklyGoal}</td>
+</tr>
+`;
+});
+}
+document.getElementById('tableVTRecordsCount').innerText = `${list.length} records`;
+},
+
+renderRITable: function() {
+const tbody = document.getElementById('riTableBody');
+tbody.innerHTML = '';
+const list = this.filteredData.individualRecords;
+
+if (list.length === 0) {
+tbody.innerHTML = `<tr><td colspan="5" class="px-4 py-8 text-center text-slate-500 italic">No data.</td></tr>`;
+} else {
+list.forEach(row => {
+tbody.innerHTML += `
+<tr class="hover:bg-slate-800/20">
+<td class="px-4 py-2 font-mono text-slate-400">${row.dateTime}</td>
+<td class="px-4 py-2 font-medium text-slate-200">${row.agent}</td>
+<td class="px-4 py-2 text-slate-300">${row.id}</td>
+<td class="px-4 py-2 text-indigo-300">${row.queue}</td>
+<td class="px-4 py-2 text-slate-400 max-w-xs truncate" title="${row.comment}">${row.comment}</td>
+</tr>
+`;
+});
+}
+document.getElementById('tableRIRecordsCount').innerText = `${list.length} records`;
+},
+
+renderOPTable: function() {
+const tbody = document.getElementById('opTableBody');
+tbody.innerHTML = '';
+const list = this.filteredData.overallProgress;
+
+if (list.length === 0) {
+tbody.innerHTML = `<tr><td colspan="10" class="px-4 py-8 text-center text-slate-500 italic">No data.</td></tr>`;
+} else {
+list.forEach(row => {
+tbody.innerHTML += `
+<tr class="hover:bg-slate-800/20">
+<td class="px-4 py-2 font-mono text-slate-400">${row.date}</td>
+<td class="px-4 py-2 font-medium text-slate-200">${row.agent}</td>
+<td class="px-4 py-2 text-slate-400">${row.lastSyncTime}</td>
+<td class="px-4 py-2 text-slate-300">${row.totalGoal}</td>
+<td class="px-4 py-2 font-bold text-white">${row.totalCount}</td>
+<td class="px-4 py-2 text-emerald-400 font-bold">${row.progress}</td>
+<td class="px-4 py-2 text-slate-400">${row.caseWorkTime}</td>
+<td class="px-4 py-2 text-slate-400">${row.verticalTrainingTime}</td>
+<td class="px-4 py-2 text-slate-400">${row.breakTime}</td>
+<td class="px-4 py-2 text-indigo-300">${row.dailyAHT}</td>
+</tr>
+`;
+});
+}
+document.getElementById('tableOPRecordsCount').innerText = `${list.length} records`;
+},
+
+renderStats: function() {
+let totalCount = 0;
+let totalGoal = 0;
+let agentsSet = new Set();
+this.filteredData.taskLogs.forEach(d => {
+totalCount += parseInt(d.count) || 0;
+totalGoal += parseInt(d.goal) || 0;
+agentsSet.add(d.agent);
+});
+
+let avgProgress = totalGoal > 0 ? ((totalCount / totalGoal) * 100).toFixed(1) : 0;
+
+document.getElementById('statTotalCount').innerText = totalCount;
+document.getElementById('statAgentsNum').innerText = agentsSet.size;
+document.getElementById('statAvgProgress').innerText = avgProgress + '%';
+},
+
+renderChart: function() {
+const agentCounts = {};
+this.filteredData.taskLogs.forEach(d => {
+agentCounts[d.agent] = (agentCounts[d.agent] || 0) + (parseInt(d.count) || 0);
+});
+
+const labels = Object.keys(agentCounts);
+const data = Object.values(agentCounts);
+
+const ctx = document.getElementById('productionChart').getContext('2d');
+if (this.chartInstance) { this.chartInstance.destroy(); }
+this.chartInstance = new Chart(ctx, {
+type: 'bar',
+data: {
+labels: labels,
+datasets: [{
+label: 'Total Logs Processed',
+data: data,
+backgroundColor: 'rgba(79, 70, 229, 0.7)',
+borderColor: 'rgba(79, 70, 229, 1)',
+borderWidth: 1,
+borderRadius: 4
+}]
+},
+options: {
+responsive: true,
+maintainAspectRatio: false,
+scales: {
+y: { beginAtZero: true, grid: { color: '#1e293b' }, ticks: { color: '#94a3b8' } },
+x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
+},
+plugins: { legend: { display: false } }
+}
+});
+},
+
+exportData: function() {
+if (this.filteredData.taskLogs.length === 0 && this.filteredData.verticalTraining.length === 0 && this.filteredData.individualRecords.length === 0 && this.filteredData.overallProgress.length === 0) {
+alert("No filtered records to export!");
+return;
+}
+
+this.showLoading("Generating Team Google Sheet...");
+const payload = JSON.stringify({ data: this.filteredData });
+
+google.script.run
+.withSuccessHandler((responseStr) => {
+this.hideLoading();
+try {
+const res = JSON.parse(responseStr);
+if(res.success && res.url) {
+const link = document.getElementById('linkExportedSheet');
+link.href = res.url;
+link.classList.remove('hidden');
+link.style.display = 'flex'; // Ensure flex display takes over
+// Automatically open the sheet if popup blocker allows, otherwise the button is there.
+const newWindow = window.open(res.url, '_blank');
+if(!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+// Popup was blocked, the user can click the revealed button.
+}
+} else {
+alert("Error generating sheet: " + res.error);
+}
+} catch(e) {
+alert("Failed parsing export response.");
+}
+})
+.withFailureHandler((err) => {
+this.hideLoading();
+alert("Execution error: " + err);
+})
+.exportConsolidatedSheet(payload);
+}
+};
+
+// Boot UI
+window.addEventListener('DOMContentLoaded', () => app.init());
+</script>

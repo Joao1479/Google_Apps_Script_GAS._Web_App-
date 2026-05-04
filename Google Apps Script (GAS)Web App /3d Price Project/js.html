@@ -1,0 +1,271 @@
+<script>
+  // ==========================================
+  // 1. Mock Environment for Local Development
+  // ==========================================
+  if (typeof window.google === 'undefined') {
+    console.info("Initializing fallback mocked google.script environment for local preview.");
+    
+    window.google = {
+      script: {
+        run: {
+          withSuccessHandler: function(cb) {
+            return {
+              withFailureHandler: function(errCb) {
+                return {
+                  saveProject: function(payload) {
+                    console.log("Mock saved Project:", payload);
+                    setTimeout(() => cb(true), 800);
+                  }
+                };
+              }
+            };
+          }
+        }
+      }
+    };
+  }
+
+  // ==========================================
+  // 2. Application State & Models
+  // ==========================================
+  
+  const state = {
+    projectName: '',
+    projectLink: '',
+    plates: [],
+    items: [],
+    totals: {
+      platesGrams: 0,
+      platesCost: 0,
+      platesTimeMins: 0,
+      itemsQty: 0,
+      itemsCost: 0,
+      grandTotalCost: 0
+    }
+  };
+
+  const UI = {
+    showLoading: () => document.getElementById('loadingOverlay').classList.remove('hidden'),
+    hideLoading: () => document.getElementById('loadingOverlay').classList.add('hidden'),
+    showError: (err) => {
+      UI.hideLoading();
+      alert("An error occurred: " + err.message);
+      console.error(err);
+    },
+    formatCurrency: (value) => '€' + parseFloat(value || 0).toFixed(2),
+    formatGrams: (value) => parseFloat(value || 0).toFixed(2) + 'g',
+    parseTimeToMins: (timeStr) => {
+      if (!timeStr) return 0;
+      let mins = 0;
+      const hMatch = timeStr.match(/(\d+)\s*h/i);
+      const mMatch = timeStr.match(/(\d+)\s*m/i);
+      if (hMatch) mins += parseInt(hMatch[1]) * 60;
+      if (mMatch) mins += parseInt(mMatch[1]);
+      if (!hMatch && !mMatch && !isNaN(timeStr)) mins += parseInt(timeStr); // fallback to raw minutes
+      return mins;
+    },
+    formatMinsToTime: (totalMins) => {
+      const h = Math.floor(totalMins / 60);
+      const m = Math.floor(totalMins % 60);
+      if (h > 0 && m > 0) return `${h}h ${m}m`;
+      if (h > 0) return `${h}h`;
+      return `${m}m`;
+    }
+  };
+
+  // ==========================================
+  // 3. Logic & Calculations
+  // ==========================================
+
+  function calculateTotals() {
+    // Calculate Plates
+    state.totals.platesGrams = state.plates.reduce((sum, p) => sum + parseFloat(p.grams || 0), 0);
+    state.totals.platesCost = state.plates.reduce((sum, p) => sum + parseFloat(p.cost || 0), 0);
+    state.totals.platesTimeMins = state.plates.reduce((sum, p) => sum + p.timeMins, 0);
+
+    // Calculate Items
+    state.totals.itemsQty = state.items.reduce((sum, i) => sum + parseInt(i.qty || 0), 0);
+    state.totals.itemsCost = state.items.reduce((sum, i) => sum + (parseInt(i.qty || 0) * parseFloat(i.unitCost || 0)), 0);
+
+    // Grand Total
+    state.totals.grandTotalCost = state.totals.platesCost + state.totals.itemsCost;
+
+    renderTotals();
+  }
+
+  function renderTotals() {
+    // 3D Table Totals
+    document.getElementById('totPlateGrams').textContent = UI.formatGrams(state.totals.platesGrams);
+    document.getElementById('totPlateCost').textContent = UI.formatCurrency(state.totals.platesCost);
+    document.getElementById('totPlateTime').textContent = UI.formatMinsToTime(state.totals.platesTimeMins);
+
+    // Items Table Totals
+    document.getElementById('totItemQty').textContent = state.totals.itemsQty;
+    document.getElementById('totItemCost').textContent = UI.formatCurrency(state.totals.itemsCost);
+
+    // Grand Total
+    document.getElementById('grandTotalDisplay').textContent = UI.formatCurrency(state.totals.grandTotalCost);
+  }
+
+  function renderPlatesTable() {
+    const tbody = document.querySelector('#platesTable tbody');
+    tbody.innerHTML = '';
+    
+    if (state.plates.length === 0) {
+      tbody.innerHTML = '<tr class="empty-state"><td colspan="5">No plates added yet.</td></tr>';
+      return;
+    }
+
+    state.plates.forEach((plate, index) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>Plate ${index + 1}</td>
+        <td>${UI.formatGrams(plate.grams)}</td>
+        <td>${UI.formatCurrency(plate.cost)}</td>
+        <td>${UI.formatMinsToTime(plate.timeMins)}</td>
+        <td style="text-align: center;">
+          <button class="btn-remove" onclick="removePlate(${index})">✕</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function renderItemsTable() {
+    const tbody = document.querySelector('#itemsTable tbody');
+    tbody.innerHTML = '';
+    
+    if (state.items.length === 0) {
+      tbody.innerHTML = '<tr class="empty-state"><td colspan="5">No items added yet.</td></tr>';
+      return;
+    }
+
+    state.items.forEach((item, index) => {
+      const tr = document.createElement('tr');
+      const totalCost = item.qty * item.unitCost;
+      tr.innerHTML = `
+        <td class="link-cell">${item.link ? `<a href="${item.link}" target="_blank">View Item</a>` : '-'}</td>
+        <td>${item.qty}</td>
+        <td>${UI.formatCurrency(item.unitCost)}</td>
+        <td>${UI.formatCurrency(totalCost)}</td>
+        <td style="text-align: center;">
+          <button class="btn-remove" onclick="removeItem(${index})">✕</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  window.removePlate = function(index) {
+    state.plates.splice(index, 1);
+    calculateTotals();
+    renderPlatesTable();
+  };
+
+  window.removeItem = function(index) {
+    state.items.splice(index, 1);
+    calculateTotals();
+    renderItemsTable();
+  };
+
+  // ==========================================
+  // 4. Event Listeners
+  // ==========================================
+
+  document.addEventListener('DOMContentLoaded', () => {
+    
+    // Add Plate
+    document.getElementById('addPlateBtn').addEventListener('click', () => {
+      const gramsInput = document.getElementById('plateGrams');
+      const costInput = document.getElementById('plateCost');
+      const timeInput = document.getElementById('plateTime');
+
+      if (!gramsInput.value || !costInput.value || !timeInput.value) {
+        alert("Please fill all plate fields (Grams, Cost, Time) before adding.");
+        return;
+      }
+
+      state.plates.push({
+        grams: parseFloat(gramsInput.value),
+        cost: parseFloat(costInput.value),
+        timeMins: UI.parseTimeToMins(timeInput.value),
+        originalTimeStr: timeInput.value
+      });
+
+      gramsInput.value = '';
+      costInput.value = '';
+      timeInput.value = '';
+
+      calculateTotals();
+      renderPlatesTable();
+    });
+
+    // Add Item
+    document.getElementById('addItemBtn').addEventListener('click', () => {
+      const linkInput = document.getElementById('itemLink');
+      const qtyInput = document.getElementById('itemQty');
+      const costInput = document.getElementById('itemCost');
+
+      if (!qtyInput.value || !costInput.value) {
+        alert("Please fill Quantity and Cost before adding.");
+        return;
+      }
+
+      state.items.push({
+        link: linkInput.value,
+        qty: parseInt(qtyInput.value),
+        unitCost: parseFloat(costInput.value)
+      });
+
+      linkInput.value = '';
+      qtyInput.value = '1';
+      costInput.value = '';
+
+      calculateTotals();
+      renderItemsTable();
+    });
+
+    // Save Project
+    document.getElementById('saveProjectBtn').addEventListener('click', () => {
+      const projectName = document.getElementById('projectName').value;
+      const projectLink = document.getElementById('projectLink').value;
+
+      if (!projectName) {
+        alert("Project Name is required.");
+        return;
+      }
+
+      if (state.plates.length === 0 && state.items.length === 0) {
+        alert("Add at least one Plate or Item to save the project.");
+        return;
+      }
+
+      const payload = {
+        projectName: projectName,
+        projectLink: projectLink,
+        grandTotal: state.totals.grandTotalCost,
+        plates: state.plates,
+        items: state.items
+      };
+
+      UI.showLoading();
+      google.script.run
+        .withSuccessHandler(function() {
+          // Reset UI
+          document.getElementById('projectName').value = '';
+          document.getElementById('projectLink').value = '';
+          state.plates = [];
+          state.items = [];
+          calculateTotals();
+          renderPlatesTable();
+          renderItemsTable();
+          UI.hideLoading();
+          alert("Project saved successfully!");
+        })
+        .withFailureHandler(UI.showError)
+        .saveProject(payload);
+    });
+
+  });
+
+</script>

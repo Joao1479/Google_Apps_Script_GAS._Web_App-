@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3D Price Library - Project Calculator</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <?!= include('css'); ?>
+</head>
+
+<body>
+
+  <!-- Loading Overlay -->
+  <div id="loadingOverlay" class="loading-overlay hidden">
+    <div class="spinner"></div>
+    <p>Processing...</p>
+  </div>
+
+  <div class="app-container">
+    <header class="app-header">
+      <h1>3D Price Project Calculator</h1>
+      <p>Dynamic Project Estimator</p>
+    </header>
+
+    <!-- Global Project Header -->
+    <section class="module-card project-card">
+      <div class="project-header-layout">
+        <div class="input-row triple align-end">
+          <div class="input-group">
+            <label for="projectName">Project Name</label>
+            <input type="text" id="projectName" placeholder="Enter project name" required>
+          </div>
+          <div class="input-group">
+            <label for="projectLink">Project Link</label>
+            <input type="url" id="projectLink" placeholder="https://...">
+          </div>
+          <div class="input-group highlight-input total-display">
+            <label>Grand Total Cost</label>
+            <div id="grandTotalDisplay" class="total-value">€0.00</div>
+          </div>
+        </div>
+        <div class="btn-row full-width">
+          <button id="saveProjectBtn" class="btn-submit mega-btn">Save Entire Project</button>
+        </div>
+      </div>
+    </section>
+
+    <main class="content-grid">
+
+      <!-- Section 1: 3D Plates -->
+      <section class="module-card">
+        <div class="visual-hierarchy-layout">
+          <div class="vertical-title">
+            <h2>3D Plates</h2>
+          </div>
+
+          <div class="form-container">
+            <div class="input-row triple">
+              <div class="input-group">
+                <label for="plateGrams">Grams</label>
+                <input type="number" id="plateGrams" placeholder="0.00" step="0.01" min="0">
+              </div>
+              <div class="input-group">
+                <label for="plateCost">Cost</label>
+                <input type="number" id="plateCost" placeholder="€0.00" step="0.01" min="0">
+              </div>
+              <div class="input-group">
+                <label for="plateTime">Time</label>
+                <input type="text" id="plateTime" placeholder="e.g., 1h 30m">
+              </div>
+            </div>
+            <div class="btn-row">
+              <button id="addPlateBtn" class="btn-add">+ Add Plate</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Current Plates Table -->
+        <div class="table-wrapper current-items-table">
+          <table id="platesTable" class="data-table">
+            <thead>
+              <tr>
+                <th>Plate N.º</th>
+                <th>Grams</th>
+                <th>Cost</th>
+                <th>Time</th>
+                <th style="width: 80px; text-align: center;">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Dynamically populated -->
+              <tr class="empty-state">
+                <td colspan="5">No plates added yet.</td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr class="totals-row">
+                <td>TOTAL 3D</td>
+                <td id="totPlateGrams">0.00g</td>
+                <td id="totPlateCost">€0.00</td>
+                <td id="totPlateTime">0m</td>
+                <td></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </section>
+
+      <!-- Section 2: Items Not 3D -->
+      <section class="module-card">
+        <div class="visual-hierarchy-layout">
+          <div class="vertical-title">
+            <h2>Items Not 3D</h2>
+          </div>
+
+          <div class="form-container">
+            <div class="input-row triple">
+              <div class="input-group">
+                <label for="itemLink">Link</label>
+                <input type="url" id="itemLink" placeholder="https://...">
+              </div>
+              <div class="input-group">
+                <label for="itemQty">Quantity (N.º)</label>
+                <input type="number" id="itemQty" placeholder="1" min="1" value="1">
+              </div>
+              <div class="input-group">
+                <label for="itemCost">Cost per Item</label>
+                <input type="number" id="itemCost" placeholder="€0.00" step="0.01" min="0">
+              </div>
+            </div>
+            <div class="btn-row">
+              <button id="addItemBtn" class="btn-add">+ Add Item</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Current Items Table -->
+        <div class="table-wrapper current-items-table">
+          <table id="itemsTable" class="data-table">
+            <thead>
+              <tr>
+                <th>Item Link</th>
+                <th>Quantity</th>
+                <th>Unit Cost</th>
+                <th>Total Cost</th>
+                <th style="width: 80px; text-align: center;">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Dynamically populated -->
+              <tr class="empty-state">
+                <td colspan="5">No items added yet.</td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr class="totals-row">
+                <td>TOTAL ITEMS</td>
+                <td id="totItemQty">0</td>
+                <td>-</td>
+                <td id="totItemCost">€0.00</td>
+                <td></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <?!= include('js'); ?>
+</body>
+
+</html>

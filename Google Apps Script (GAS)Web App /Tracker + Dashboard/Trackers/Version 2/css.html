@@ -1,0 +1,367 @@
+<style>
+    /* COMPACT MODE STYLES (Shared) */
+    html[class*="compact-"] body {
+        padding: 0 !important;
+    }
+
+    html[class*="compact-"] .hide-in-compact {
+        display: none !important;
+    }
+
+    html[class*="compact-"] .show-in-compact {
+        display: flex !important;
+    }
+
+    html:not([class*="compact-"]) .show-in-compact {
+        display: none !important;
+    }
+
+    html[class*="compact-"] header {
+        padding: 0.5rem !important;
+        height: auto !important;
+    }
+
+    html[class*="compact-"] .right-panel {
+        display: none !important;
+    }
+
+    html[class*="compact-"] .timer-box {
+        padding: 0.5rem !important;
+    }
+
+    html[class*="compact-"] .timer-display {
+        font-size: 1.5rem !important;
+        margin-bottom: 0.25rem !important;
+    }
+
+    html[class*="compact-"] table {
+        font-size: 0.75rem !important;
+    }
+
+    /* VERTICAL COMPACT */
+    html.compact-v main {
+        flex-direction: column !important;
+        padding: 0.5rem !important;
+        gap: 0.5rem !important;
+    }
+
+    html.compact-v .left-panel {
+        flex: none !important;
+        gap: 0.5rem !important;
+    }
+
+    html.compact-v th,
+    html.compact-v td {
+        padding: 0.25rem 0.5rem !important;
+    }
+
+    html.compact-v #compactOverallProgress {
+        font-size: 1.25rem;
+        margin-left: 0.5rem;
+    }
+
+    html.compact-v .smart-timer-container {
+        display: none !important;
+    }
+
+    html.compact-v .v-mode-timers {
+        display: flex !important;
+    }
+
+    /* HORIZONTAL COMPACT (BOTTOM BAR) */
+    html.compact-h body {
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+    }
+
+    html.compact-h main {
+        flex-direction: column !important;
+        padding: 0 !important;
+        justify-content: flex-end;
+        align-items: center;
+        flex: 1;
+        min-height: 0;
+    }
+
+    html.compact-h .left-panel {
+        flex: none !important;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        border: none;
+        padding: 0.5rem;
+    }
+
+    html.compact-h .smart-timer-container {
+        display: none !important;
+    }
+
+    html.compact-h .h-mode-timers {
+        display: flex !important;
+    }
+
+    html.compact-h #queuesCard {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        width: auto;
+        margin: 0 0.5rem 0.5rem 0.5rem;
+        border-radius: 12px;
+        border: 1px solid rgba(51, 65, 85, 0.8);
+        z-index: 50;
+        background: rgba(15, 23, 42, 0.98);
+        backdrop-filter: blur(10px);
+        box-shadow: 0 -4px 25px rgba(0, 0, 0, 0.3);
+    }
+
+    html.compact-h #queuesCard thead {
+        display: none;
+    }
+
+    html.compact-h #queuesCard .border-b {
+        padding: 0.25rem 0.75rem;
+        border-color: rgba(51, 65, 85, 0.5);
+    }
+
+    html.compact-h #btnOpenLogModal {
+        padding: 0.2rem 0.5rem;
+        margin-top: 0;
+    }
+
+    html.compact-h #queuesTableBody {
+        display: flex;
+        flex-direction: row;
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        padding: 0.5rem;
+        align-items: center;
+        justify-content: center;
+        scrollbar-width: none;
+    }
+
+    html.compact-h #queuesTableBody::-webkit-scrollbar {
+        display: none;
+    }
+
+    html.compact-h #queuesTableBody tr {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0 0.75rem;
+        border-right: 1px solid rgba(51, 65, 85, 0.4);
+        flex-shrink: 0;
+        background: transparent !important;
+    }
+
+    html.compact-h #queuesTableBody tr:last-child {
+        border-right: none;
+    }
+
+    html.compact-h #queuesTableBody td {
+        padding: 0 !important;
+        border: none !important;
+    }
+
+    html.compact-h #queuesTableBody td:nth-child(2),
+    html.compact-h #queuesTableBody td:nth-child(3),
+    html.compact-h #queuesTableBody td:nth-child(5) {
+        display: none !important;
+    }
+
+    html.compact-h #queuesTableBody td:nth-child(1) {
+        font-size: 0.8rem !important;
+        font-weight: 600;
+        color: #cbd5e1;
+        max-width: 100px;
+        whitespace: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: block;
+    }
+
+    html.compact-h #queuesTableBody td:nth-child(4) .flex {
+        gap: 0.25rem;
+    }
+
+    html.compact-h #queuesTableBody td:nth-child(4) input {
+        width: 2.2rem !important;
+        font-size: 0.85rem !important;
+        height: 1.5rem;
+        background: #0f172a;
+        border-color: #475569;
+        padding: 0;
+    }
+
+    html.compact-h #queuesTableBody td:nth-child(4) button {
+        width: 1.5rem !important;
+        height: 1.5rem !important;
+        font-size: 0.85rem;
+        border-radius: 4px;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    html.compact-h #compactOverallProgress {
+        font-size: 0.85rem;
+        margin-left: 0.25rem;
+        font-weight: 700;
+    }
+
+    /* FLOAT / SQUARE COMPACT (WIDGET MODE) */
+    html.compact-f body {
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+    }
+
+    html.compact-f main {
+        padding: 0 !important;
+        align-items: center;
+        justify-content: center;
+        height: calc(100vh - 65px);
+        flex: 1;
+        min-height: 0;
+    }
+
+    html.compact-f .left-panel {
+        flex: none !important;
+        width: 100%;
+        max-width: 400px;
+        height: 100%;
+        max-height: 100vh;
+        border: none;
+        padding: clamp(0.2rem, 2vw, 0.5rem);
+        display: flex;
+        flex-direction: column;
+    }
+
+    html.compact-f #queuesCard {
+        height: 100%;
+        max-height: 100%;
+        border-radius: clamp(8px, 4vw, 16px);
+        border: 1px solid rgba(51, 65, 85, 0.8);
+        background: rgba(15, 23, 42, 0.98);
+        backdrop-filter: blur(10px);
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        display: flex;
+        flex-direction: column;
+    }
+
+    html.compact-f #queuesCard thead {
+        display: none;
+    }
+
+    html.compact-f #queuesCard>div.border-b {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        padding: clamp(0.5rem, 5vw, 1.5rem) clamp(0.5rem, 3vw, 1rem) clamp(0.2rem, 3vw, 1rem) clamp(0.5rem, 3vw, 1rem);
+    }
+
+    html.compact-f .show-in-compact.flex-row {
+        flex-direction: column !important;
+        gap: clamp(0.25rem, 3vw, 0.75rem);
+        width: 100%;
+    }
+
+    html.compact-f .show-in-compact.flex-row>div.flex-col {
+        align-items: center !important;
+        flex: 1;
+        width: 100%;
+    }
+
+    html.compact-f #compactActiveTimerClock {
+        font-size: clamp(2rem, 15vw, 3.5rem) !important;
+        letter-spacing: -0.05em;
+        font-weight: 800;
+        line-height: 1;
+        text-align: center;
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+
+    html.compact-f #compactActiveTimerTitle {
+        font-size: clamp(0.7rem, 4vw, 1rem) !important;
+        margin-bottom: 0.25rem;
+        text-align: center;
+        width: 100%;
+    }
+
+    html.compact-f #queuesCard>div:nth-child(2) {
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        flex: 1;
+        min-height: 0;
+    }
+
+    html.compact-f #queuesTableBody {
+        display: flex;
+        flex-direction: column;
+        padding: 0;
+    }
+
+    html.compact-f #queuesTableBody tr {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        padding: clamp(0.25rem, 2vw, 0.75rem) clamp(0.25rem, 2vw, 1rem);
+        border-bottom: 1px solid rgba(51, 65, 85, 0.4);
+        gap: clamp(0.25rem, 2vw, 1rem);
+        background: transparent !important;
+    }
+
+    html.compact-f #queuesTableBody tr:last-child {
+        border-bottom: none;
+    }
+
+    html.compact-f #queuesTableBody td {
+        padding: 0 !important;
+        border: none !important;
+    }
+
+    html.compact-f #queuesTableBody td:nth-child(2),
+    html.compact-f #queuesTableBody td:nth-child(3),
+    html.compact-f #queuesTableBody td:nth-child(5) {
+        display: none !important;
+    }
+
+    html.compact-f #queuesTableBody td:nth-child(1) {
+        font-size: clamp(0.75rem, 4vw, 0.95rem) !important;
+        font-weight: 600;
+        color: #cbd5e1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        flex: 1;
+    }
+
+    html.compact-f #queuesTableBody td:nth-child(4) .flex {
+        gap: clamp(0.1rem, 1vw, 0.5rem);
+    }
+
+    html.compact-f #queuesTableBody td:nth-child(4) input {
+        width: clamp(2rem, 8vw, 3rem) !important;
+        font-size: clamp(0.75rem, 4vw, 1rem) !important;
+        height: clamp(1.5rem, 6vw, 2rem);
+        background: #0f172a;
+        border-color: #475569;
+    }
+
+    html.compact-f #queuesTableBody td:nth-child(4) button {
+        width: clamp(1.5rem, 6vw, 2rem) !important;
+        height: clamp(1.5rem, 6vw, 2rem) !important;
+        font-size: clamp(0.75rem, 4vw, 1rem);
+        border-radius: 4px;
+    }
+
+    html.compact-f #compactOverallProgress {
+        font-size: clamp(0.75rem, 4vw, 1rem);
+        margin-left: 0.25rem;
+    }
+</style>
